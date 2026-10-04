@@ -1120,21 +1120,23 @@ main{grid-template-columns:minmax(0,1fr)}
   }
 
   /* ================= aba Presidente: detalhe, evolução e município ================= */
-  function abrPres(){ return elMun.value && elUf.value !== "br" && elUf.value !== "zz" ? elUf.value + elMun.value : elUf.value; }
+  function abrPres(){ return elMun.value && elUf.value !== "br" ? elUf.value + elMun.value : elUf.value; }
   function limparPres(){ ["cands","resumo","seg","evol-svg"].forEach(function(id){ $(id).innerHTML = ""; }); $("pct").textContent = "–"; $("dif").innerHTML = ""; $("evol").hidden = true; $("leg50").hidden = true; presInfo = null; }
   function carregarMunicipios(){
     var uf = elUf.value;
-    $("mun-linha").hidden = uf === "br" || uf === "zz";
-    elMun.innerHTML = '<option value="">Todo o estado</option>';
-    if (uf === "br" || uf === "zz") return;
+    $("mun-linha").hidden = uf === "br";
+    var todos = uf === "zz" ? "Todo o exterior" : "Todo o estado";
+    $("mun").setAttribute("aria-label", uf === "zz" ? "Localidade no exterior" : "Município");
+    elMun.innerHTML = '<option value="">' + todos + '</option>';
+    if (uf === "br") return;
     var a = cfg(), f1 = elei ? elei.fed[1] : a.federal, u = a.base + "/" + eleCiclo() + "/" + f1 + "/config/mun-e" + pad(f1,6) + "-cm.json" + (a.demo ? "#" + uf : "");
     var lista = munCache[elAmb.value + uf];
     var preencher = function(l){
-      if (!l || !l.length){ elMun.innerHTML = '<option value="">Municípios indisponíveis</option>'; return; }
-      elMun.innerHTML = '<option value="">Todo o estado</option>' + l.map(function(m){ return '<option value="'+esc(m.cd)+'">'+esc(m.nm)+'</option>'; }).join("");
+      if (!l || !l.length){ elMun.innerHTML = '<option value="">' + (uf === "zz" ? "Localidades" : "Municípios") + ' indisponíveis</option>'; return; }
+      elMun.innerHTML = '<option value="">' + todos + '</option>' + l.map(function(m){ return '<option value="'+esc(m.cd)+'">'+esc(m.nm)+'</option>'; }).join("");
     };
     if (lista){ preencher(lista); return; }
-    elMun.innerHTML = '<option value="">Carregando municípios…</option>';
+    elMun.innerHTML = '<option value="">Carregando ' + (uf === "zz" ? "localidades" : "municípios") + '…</option>';
     baixar(u).then(function(r){
       if (r.status !== 200) return preencher(null);
       // Leiaute EA12: abr[{cd:UF, mu:[{cd, nm, ...}]}]; procura de forma tolerante

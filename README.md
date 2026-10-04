@@ -9,7 +9,7 @@ Painel para acompanhar a apuração das Eleições 2026 direto dos arquivos púb
 - **Presidente:** mapa do Brasil com o contorno de cada estado, pintado de vermelho quando o Lula lidera e de azul quando o Flávio Bolsonaro lidera (cinza para outro candidato). Mostra o placar de estados, o resumo por região, o voto de brasileiros no exterior (separado, fora da contagem de estados), a diferença em votos, o quanto falta apurar e um gráfico de evolução ao longo da noite.
 - **Governador e Senador:** um estado por vez (Pernambuco é o padrão), com foto, nome, nome completo, partido, número, vice (governador) ou suplentes (senador). Os 27 estados só são carregados se você pedir.
 - **Deputado federal e estadual (distrital no DF):** quem já está eleito e quem está **se elegendo**, calculado a partir das vagas que o próprio arquivo do TSE atribui a cada partido ou federação. Há busca por nome, número ou partido, e um semicírculo de cadeiras por partido. A Câmara inteira (513 cadeiras) também é opcional.
-- **Resultado por município** na aba Presidente, ao escolher um estado.
+- **Resultado por município** na aba Presidente, ao escolher um estado, e **por localidade no exterior** (cidades com seção eleitoral de brasileiros, como Abidjã e Abu Dhabi) ao escolher "Exterior".
 - **Meus candidatos:** marque a estrela de qualquer candidato para acompanhá-lo num cartão fixo no topo (até 12).
 - **Avisos (ícone de sino):** avisa quando presidente e governadores são definidos e quando um favorito é eleito ou vai ao 2º turno.
 - **Compartilhar imagem:** gera uma imagem do resultado para enviar por aplicativo de mensagens.
@@ -69,7 +69,7 @@ Os arquivos públicos de divulgação do TSE, lidos diretamente pelo navegador d
 ## Limitações conhecidas
 
 - O formato dos arquivos foi conferido com os arquivos que o TSE publicou antes da votação (zerados). O comportamento com votos reais, em volume de apuração, ainda precisa ser acompanhado.
-- A lista de municípios e o resultado por município ainda não foram conferidos com arquivos reais do TSE. Se o seletor de município não carregar, rode o coletor (opção "Lista de municípios") e verifique o formato.
+- A lista de municípios e de localidades no exterior foi conferida com o arquivo real do TSE, mas o resultado de cada município ou localidade só pôde ser testado com dados simulados, porque o arquivo real só existe depois da divulgação. Se algum não abrir, use o coletor com o endereço adicionado e verifique o formato.
 - Governador e senador: "Na frente" e "Eleito" seguem a marcação do TSE; a página não projeta vencedor com base em resultado parcial. A ordem em que as urnas são totalizadas distorce parciais, então **resultado parcial não é previsão**.
 - Em deputados, "Se elegendo" indica candidatos dentro das vagas já atribuídas ao partido ou federação na conta do TSE, e pode mudar até o fim da apuração.
 - Notificações do sistema só funcionam com a página aberta; não há notificação com a página fechada.
