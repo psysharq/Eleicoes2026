@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Coletor de arquivos do TSE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --papel:#EEF2F4; --tinta:#1D2B36; --apagado:#5C6B76; --linha:#D5DCE1; --cartao:#FFFFFF;
+  --confirma:#1E7F4F; --alerta:#9A5B00; --erro:#B3261E; --fundo-barra:#E3E8EC;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --papel:#121B22; --tinta:#E7ECEF; --apagado:#9AA8B2; --linha:#2C3A45; --cartao:#1A2630;
+  --confirma:#4CC38A; --alerta:#E0A84A; --erro:#F2726A; --fundo-barra:#24323D;
+}}
+:root[data-theme="dark"]{
+  --papel:#121B22; --tinta:#E7ECEF; --apagado:#9AA8B2; --linha:#2C3A45; --cartao:#1A2630;
+  --confirma:#4CC38A; --alerta:#E0A84A; --erro:#F2726A; --fundo-barra:#24323D;
+}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--papel);color:var(--tinta);font:400 17px/1.5 "Barlow",system-ui,-apple-system,"Segoe UI",sans-serif}
+.num{font-family:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;font-variant-numeric:tabular-nums}
+main{max-width:760px;margin:0 auto;padding:20px 14px 48px;display:grid;gap:16px}
+h1{font:700 1.5rem/1.1 "Barlow Condensed",system-ui,sans-serif;margin:0 0 4px}
+h2{font:700 1.2rem/1.2 "Barlow Condensed",system-ui,sans-serif;margin:0 0 10px}
+header p{margin:0;color:var(--apagado);font-size:.92rem}
+.meta{color:var(--apagado);font-size:.88rem}
+.cartao{background:var(--cartao);border:1px solid var(--linha);border-radius:10px;padding:18px}
+select,button,input[type=url]{font:inherit;font-size:.95rem;color:var(--tinta);background:var(--cartao);
+  border:1px solid var(--linha);border-radius:6px;padding:8px 10px;min-height:44px}
+button{cursor:pointer}
+button.primario{background:var(--tinta);color:var(--cartao);border-color:var(--tinta);font-weight:600}
+button:disabled{opacity:.5;cursor:default}
+:focus-visible{outline:3px solid var(--confirma);outline-offset:2px}
+.linha{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.opcoes{list-style:none;margin:6px 0 0;padding:0}
+.opcoes li{border-bottom:1px solid var(--linha)}
+.opcoes li:last-child{border-bottom:0}
+.opcoes label{display:flex;gap:12px;align-items:flex-start;padding:10px 0;cursor:pointer}
+.opcoes input{width:22px;height:22px;margin:2px 0 0;flex:none;accent-color:var(--confirma)}
+.opcoes small{display:block;color:var(--apagado);font-size:.82rem;word-break:break-all}
+.extra{display:flex;gap:8px;margin-top:10px}
+.extra input{flex:1;min-width:0}
+.progresso{height:10px;background:var(--fundo-barra);border-radius:5px;overflow:hidden;margin:12px 0 4px}
+.progresso span{display:block;height:100%;width:0;background:var(--confirma);transition:width .3s}
+ol.res{list-style:none;margin:0;padding:0}
+ol.res li{padding:10px 0;border-bottom:1px solid var(--linha)}
+ol.res li:last-child{border-bottom:0}
+.res-topo{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.res-topo b{font-weight:600}
+.estado{font-weight:600;white-space:nowrap}
+.ok{color:var(--confirma)} .falha{color:var(--erro)} .espera{color:var(--apagado)} .aviso-c{color:var(--alerta)}
+.resumo{font-size:.85rem;color:var(--apagado);margin-top:2px;word-break:break-word}
+.acoes{display:grid;gap:8px;grid-template-columns:1fr 1fr}
+.acoes .largo{grid-column:1/-1}
+.passos{margin:0;padding-left:1.2em}
+.passos li{margin:4px 0}
+.msg{margin:10px 0 0;padding:10px 12px;border-left:4px solid var(--alerta);background:var(--papel);font-size:.92rem}
+.msg:empty{display:none}
+@media (prefers-reduced-motion:reduce){.progresso span{transition:none}}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Coletor de arquivos do TSE</h1>
+    <p>Baixa os arquivos de resultado direto do TSE e junta tudo num único pacote para você anexar na conversa com o Claude.</p>
+  </header>
+
+  <section class="cartao">
+    <h2>1. Escolha o que coletar</h2>
+    <div class="linha">
+      <select id="amb" aria-label="Ambiente">
+        <option value="oficial">Oficial</option>
+        <option value="simulado">Simulado do TSE</option>
+      </select>
+      <select id="uf" aria-label="Estado para governador, senador e deputados"></select>
+    </div>
+    <ul class="opcoes" id="opcoes"></ul>
+    <div class="extra">
+      <input type="url" id="url-extra" placeholder="Outro endereço do TSE (opcional)" aria-label="Outro endereço do TSE">
+      <button type="button" id="add">Adicionar</button>
+    </div>
+  </section>
+
+  <section class="cartao">
+    <h2>2. Colete</h2>
+    <button type="button" class="primario" id="coletar" style="width:100%">Coletar arquivos</button>
+    <div class="progresso" aria-hidden="true"><span id="barra"></span></div>
+    <p class="meta" id="progresso-txt" style="margin:0">Nada coletado ainda.</p>
+    <ol class="res" id="res"></ol>
+  </section>
+
+  <section class="cartao">
+    <h2>3. Envie para o Claude</h2>
+    <div class="acoes">
+      <button type="button" class="primario largo" id="compartilhar" disabled>Compartilhar pacote</button>
+      <button type="button" id="baixar" disabled>Baixar pacote</button>
+      <button type="button" id="copiar" disabled>Copiar resumo</button>
+    </div>
+    <p class="msg" id="msg" role="status"></p>
+    <ol class="passos meta" style="margin-top:12px">
+      <li>Toque em <b>Baixar pacote</b>. O arquivo vai para a pasta Downloads com um nome como <code>tse-pacote-…json</code>.</li>
+      <li>Na conversa com o Claude, toque no clipe ou no <b>+</b> e anexe esse arquivo.</li>
+      <li>Se o arquivo ficar grande demais para anexar, use <b>Copiar resumo</b> e cole o texto na conversa: ele traz a estrutura sem a lista inteira de candidatos.</li>
+    </ol>
+  </section>
+</main>
+
+<script>
+(function(){
+  var AMB = {
+    oficial:  { base:"https://resultados.tse.jus.br/oficial", federal:6257, estadual:6259, raiz:"https://resultados.tse.jus.br/oficial" },
+    simulado: { base:"https://resultados-sim.tse.jus.br/simulado/simulado2026", federal:21270, estadual:21272, raiz:"https://resultados-sim.tse.jus.br/simulado/simulado2026" }
+  };
+  var NOMES = {AC:"Acre",AL:"Alagoas",AM:"Amazonas",AP:"Amapá",BA:"Bahia",CE:"Ceará",DF:"Distrito Federal",ES:"Espírito Santo",GO:"Goiás",MA:"Maranhão",MG:"Minas Gerais",MS:"Mato Grosso do Sul",MT:"Mato Grosso",PA:"Pará",PB:"Paraíba",PE:"Pernambuco",PI:"Piauí",PR:"Paraná",RJ:"Rio de Janeiro",RN:"Rio Grande do Norte",RO:"Rondônia",RR:"Roraima",RS:"Rio Grande do Sul",SC:"Santa Catarina",SE:"Sergipe",SP:"São Paulo",TO:"Tocantins"};
+  var UFS = Object.keys(NOMES).sort();
+  var ESPACO = 200;  // ms entre arquivos: bem abaixo do limite de 100 req/s do TSE
+
+  var $ = function(id){ return document.getElementById(id); };
+  var elAmb = $("amb"), elUf = $("uf"), extras = [], pacote = null;
+
+  function pad(n, t){ return ("000000" + n).slice(-t); }
+  function arq(ele, abr, cargo){
+    var a = AMB[elAmb.value];
+    return a.base + "/ele2026/" + ele + "/dados/" + abr + "/" + abr + "-c" + pad(cargo,4) + "-e" + pad(ele,6) + "-u.json";
+  }
+  function opcoes(){
+    var a = AMB[elAmb.value], uf = elUf.value, U = uf.toUpperCase();
+    var dep = uf === "df" ? 8 : 7;
+    return [
+      { id:"config",  nome:"Configuração das eleições", url: a.raiz + "/comum/config/ele-c.json", marcado:true },
+      { id:"pres",    nome:"Presidente, Brasil", url: arq(a.federal, "br", 1), marcado:true },
+      { id:"presZZ", nome:"Presidente, Exterior (brasileiros no exterior)", url: arq(a.federal, "zz", 1), marcado:true },
+      { id:"acomp",   nome:"Acompanhamento da totalização, Brasil", url: a.base + "/ele2026/" + a.federal + "/dados/br/br-e" + pad(a.federal,6) + "-ab.json", marcado:true },
+      { id:"foto",    nome:"Foto de teste: Lula (verifica o endereço das fotos)", url: a.base + "/ele2026/" + a.federal + "/fotos/br/280002542548.jpeg", marcado:true, imagem:true },
+      { id:"gov",     nome:"Governador, " + NOMES[U], url: arq(a.estadual, uf, 3), marcado:true },
+      { id:"sen",     nome:"Senador, " + NOMES[U], url: arq(a.estadual, uf, 5), marcado:true },
+      { id:"depf",    nome:"Deputado federal, " + NOMES[U], url: arq(a.estadual, uf, 6), marcado:true },
+      { id:"depe",    nome:(uf === "df" ? "Deputado distrital, " : "Deputado estadual, ") + NOMES[U], url: arq(a.estadual, uf, dep), marcado:true },
+      { id:"pres27",  nome:"Presidente nos 27 estados (27 arquivos)", url:"vários", marcado:false, varios: UFS.map(function(u){ return arq(a.federal, u.toLowerCase(), 1); }) },
+      { id:"mun",     nome:"Lista de municípios (arquivo grande)", url: a.base + "/ele2026/" + a.federal + "/config/mun-e" + pad(a.federal,6) + "-cm.json", marcado:false }
+    ];
+  }
+  function desenharOpcoes(){
+    var marcados = {};
+    [].forEach.call(document.querySelectorAll("#opcoes input"), function(i){ marcados[i.value] = i.checked; });
+    $("opcoes").innerHTML = opcoes().map(function(o){
+      var ck = o.id in marcados ? marcados[o.id] : o.marcado;
+      return '<li><label><input type="checkbox" value="'+o.id+'"'+(ck?" checked":"")+'><span>'+o.nome+'<small>'+(o.varios ? "Um arquivo por estado" : o.url)+'</small></span></label></li>';
+    }).join("") + extras.map(function(u, i){
+      return '<li><label><input type="checkbox" value="extra-'+i+'" checked><span>Endereço adicionado<small>'+esc(u)+'</small></span></label></li>';
+    }).join("");
+  }
+  function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
+  function tamanho(n){ return n > 1048576 ? (n/1048576).toFixed(1).replace(".", ",") + " MB" : Math.max(1, Math.round(n/1024)) + " KB"; }
+  function esperar(ms){ return new Promise(function(ok){ setTimeout(ok, ms); }); }
+
+  // Resumo da estrutura: chaves do topo, quantos candidatos e as chaves de um candidato
+  function estrutura(d){
+    var cands = [], chavesCand = {};
+    (function andar(o){
+      if (!o || typeof o !== "object") return;
+      if (Array.isArray(o)){ o.forEach(andar); return; }
+      if (o.vap !== undefined || o.sqcand !== undefined){ cands.push(o); Object.keys(o).forEach(function(k){ chavesCand[k] = 1; }); return; }
+      Object.keys(o).forEach(function(k){ andar(o[k]); });
+    })(d);
+    var topo = d && typeof d === "object" && !Array.isArray(d) ? Object.keys(d) : [];
+    var amostra = cands[0] ? JSON.parse(JSON.stringify(cands[0])) : null;
+    return { chaves_topo: topo, candidatos: cands.length, chaves_candidato: Object.keys(chavesCand), exemplo_candidato: amostra };
+  }
+
+  function selecionados(){
+    var lista = [], ops = opcoes();
+    [].forEach.call(document.querySelectorAll("#opcoes input:checked"), function(i){
+      if (i.value.indexOf("extra-") === 0){ lista.push({ nome:"Endereço adicionado", url: extras[+i.value.slice(6)] }); return; }
+      var o = ops.filter(function(x){ return x.id === i.value; })[0];
+      if (o.varios) o.varios.forEach(function(u){ lista.push({ nome:"Presidente, " + u.split("/dados/")[1].slice(0,2).toUpperCase(), url:u }); });
+      else lista.push({ nome:o.nome, url:o.url });
+    });
+    return lista;
+  }
+
+  function coletar(){
+    var lista = selecionados();
+    if (!lista.length){ $("progresso-txt").textContent = "Marque pelo menos um arquivo."; return; }
+    $("coletar").disabled = true; $("baixar").disabled = $("copiar").disabled = $("compartilhar").disabled = true; $("msg").textContent = "";
+    pacote = { gerado_em: new Date().toISOString(), ambiente: elAmb.value, navegador: navigator.userAgent, arquivos: [] };
+    $("res").innerHTML = lista.map(function(x, i){
+      return '<li id="r'+i+'"><div class="res-topo"><b>'+esc(x.nome)+'</b><span class="estado espera">Na fila</span></div><div class="resumo">'+esc(x.url)+'</div></li>';
+    }).join("");
+    var feitos = 0;
+    lista.reduce(function(fila, x, i){
+      return fila.then(function(){
+        var li = $("r"+i), est = li.querySelector(".estado"), res = li.querySelector(".resumo");
+        est.textContent = "Baixando…";
+        var item = { nome:x.nome, url:x.url };
+        return fetch(x.url, { cache:"no-cache" }).then(function(r){
+          item.status = r.status;
+          item.ultima_modificacao = r.headers.get("last-modified");
+          item.tipo = r.headers.get("content-type");
+          if (/\.jpe?g$/i.test(x.url) && r.status === 200) return r.blob().then(function(bl){ item.imagem = true; return { imagem:bl.size, tipo:bl.type }; });
+          return r.text();
+        }).then(function(txt){
+          if (txt && txt.imagem !== undefined){
+            item.bytes = txt.imagem; est.textContent = tamanho(txt.imagem); est.className = "estado ok num";
+            res.textContent = "Foto encontrada (" + (txt.tipo || "imagem") + "). O endereço das fotos está certo.";
+            return;
+          }
+          item.bytes = txt.length;
+          if (item.status !== 200){
+            est.textContent = "HTTP " + item.status; est.className = "estado " + (item.status === 404 ? "aviso-c" : "falha");
+            res.textContent = item.status === 404 ? (/\.jpe?g$/i.test(x.url) ? "Foto não encontrada neste endereço: me avise para eu acertar o caminho." : "Não encontrado: o TSE ainda não publicou este arquivo ou o endereço mudou.") : "O servidor recusou o pedido.";
+            return;
+          }
+          try { item.dados = JSON.parse(txt); }
+          catch(e){ item.texto = txt.slice(0, 5000); est.textContent = "Não é JSON"; est.className = "estado falha"; return; }
+          item.estrutura = estrutura(item.dados);
+          est.textContent = tamanho(item.bytes); est.className = "estado ok num";
+          res.textContent = item.estrutura.candidatos
+            ? item.estrutura.candidatos + " candidatos. Campos: " + item.estrutura.chaves_candidato.join(", ")
+            : "Campos: " + item.estrutura.chaves_topo.slice(0, 14).join(", ") + (item.estrutura.chaves_topo.length > 14 ? "…" : "");
+        }).catch(function(err){
+          item.erro = String(err);
+          est.textContent = "Falhou"; est.className = "estado falha";
+          res.textContent = err instanceof TypeError ? "Sem internet ou leitura bloqueada pelo navegador (CORS)." : String(err);
+        }).then(function(){
+          pacote.arquivos.push(item);
+          feitos++;
+          $("barra").style.width = (feitos/lista.length*100) + "%";
+          $("progresso-txt").textContent = feitos + " de " + lista.length + " arquivos";
+          return esperar(ESPACO);
+        });
+      });
+    }, Promise.resolve()).then(function(){
+      var ok = pacote.arquivos.filter(function(a){ return a.status === 200 && a.dados; }).length;
+      $("progresso-txt").textContent = ok + " de " + lista.length + " arquivos coletados com sucesso.";
+      $("coletar").disabled = false;
+      $("baixar").disabled = $("copiar").disabled = false;
+      $("compartilhar").disabled = !podeCompartilhar();
+      if (!podeCompartilhar()) $("compartilhar").textContent = "Compartilhar indisponível aqui";
+    });
+  }
+
+  function nomeArquivo(){
+    var d = new Date(), z = function(n){ return ("0"+n).slice(-2); };
+    return "tse-pacote-" + elAmb.value + "-" + d.getFullYear() + z(d.getMonth()+1) + z(d.getDate()) + "-" + z(d.getHours()) + z(d.getMinutes()) + ".json";
+  }
+  function arquivoPacote(){ return new File([JSON.stringify(pacote)], nomeArquivo(), { type:"application/json" }); }
+  function podeCompartilhar(){
+    try { return !!(navigator.canShare && navigator.canShare({ files:[arquivoPacote()] })); } catch(e){ return false; }
+  }
+  function resumoTexto(){
+    return JSON.stringify({ gerado_em: pacote.gerado_em, ambiente: pacote.ambiente, arquivos: pacote.arquivos.map(function(a){
+      return { nome:a.nome, url:a.url, status:a.status, bytes:a.bytes, erro:a.erro, estrutura:a.estrutura,
+        topo: a.dados && !Array.isArray(a.dados) ? Object.fromEntries(Object.entries(a.dados).filter(function(kv){ return typeof kv[1] !== "object"; })) : undefined };
+    }) }, null, 1);
+  }
+
+  $("baixar").addEventListener("click", function(){
+    var f = arquivoPacote(), u = URL.createObjectURL(f), a = document.createElement("a");
+    a.href = u; a.download = f.name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(u); }, 4000);
+    $("msg").textContent = "Pacote salvo como " + f.name + " (" + tamanho(f.size) + "). Agora anexe esse arquivo na conversa.";
+  });
+  $("compartilhar").addEventListener("click", function(){
+    navigator.share({ files:[arquivoPacote()], title:"Pacote do TSE" })
+      .then(function(){ $("msg").textContent = "Pacote compartilhado."; })
+      .catch(function(e){ if (e.name !== "AbortError") $("msg").textContent = "Não foi possível compartilhar. Use Baixar pacote."; });
+  });
+  $("copiar").addEventListener("click", function(){
+    var t = resumoTexto();
+    (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject())
+      .then(function(){ $("msg").textContent = "Resumo copiado (" + tamanho(t.length) + "). Cole na conversa com o Claude."; })
+      .catch(function(){
+        var ta = document.createElement("textarea"); ta.value = t; document.body.appendChild(ta); ta.select();
+        var ok = false; try { ok = document.execCommand("copy"); } catch(e){}
+        ta.remove();
+        $("msg").textContent = ok ? "Resumo copiado. Cole na conversa com o Claude." : "O navegador não deixou copiar. Use Baixar pacote.";
+      });
+  });
+  $("add").addEventListener("click", function(){
+    var v = $("url-extra").value.trim();
+    if (!/^https:\/\/resultados(-sim)?\.tse\.jus\.br\//.test(v)){ $("msg").textContent = "Use um endereço que comece com https://resultados.tse.jus.br/ ou https://resultados-sim.tse.jus.br/."; return; }
+    extras.push(v); $("url-extra").value = ""; $("msg").textContent = ""; desenharOpcoes();
+  });
+  $("coletar").addEventListener("click", coletar);
+  elAmb.addEventListener("change", desenharOpcoes);
+  elUf.addEventListener("change", desenharOpcoes);
+
+  elUf.innerHTML = UFS.map(function(u){ return '<option value="'+u.toLowerCase()+'">'+NOMES[u]+'</option>'; }).join("");
+  elUf.value = "sp";
+  desenharOpcoes();
+})();
+</script>
+</body>
+</html>
