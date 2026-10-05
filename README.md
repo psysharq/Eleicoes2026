@@ -22,10 +22,11 @@ Painel para acompanhar a apuração das Eleições 2026 direto dos arquivos púb
 
 ## Segunda página: mapas por região e por cidade
 
-O arquivo `mapas.html` é uma página separada, só para o **Presidente**, com dois blocos:
+O arquivo `mapas.html` é uma página separada, com dois blocos. O painel principal (`index.html`) tem um botão no topo que leva até ela, e ela tem um link de volta. O bloco de regiões é só do Presidente; o de cidades tem Presidente e Governador:
 
 - **Presidente por região:** mapa do Brasil com Norte, Nordeste, Centro-Oeste, Sudeste e Sul, cada uma pintada pelo resultado somado dos seus estados. Tocar numa região mostra os estados dela.
 - **Estados e cidades:** o mapa do Brasil funciona como **filtro**. Ao tocar num estado (ou escolhê-lo na lista), aparece o mapa de calor das cidades dele. O mapa de calor mostra quem lidera e por quanto, o **percentual de qualquer candidato** (escolhido numa lista) ou quanto já foi apurado. Cada cidade pode ser aberta para ver os candidatos, e há listas das cidades de maior vantagem de cada lado.
+- **Governador por cidade:** no bloco de cidades, troque o cargo para **Governador**. Cada estado tem seus candidatos, então as cores são por candidato: a cor do candidato que lidera em cada cidade, mais forte quanto maior a vantagem, com a legenda dos candidatos do estado. Também dá para ver o percentual de um candidato escolhido na lista ou quanto já foi apurado. Há um resumo de quantas cidades cada candidato lidera, as cidades de maior vantagem dos dois primeiros e o detalhe de cada cidade. Só o estado escolhido é consultado (um arquivo do estado, mais as cidades). Se o TSE não tiver arquivo de governador para o estado no turno, a página avisa e não consulta as cidades. O endereço `mapas.html#pe-gov` abre direto no governador de Pernambuco.
 
 Os contornos das cidades (fonte: IBGE, simplificados) já vão **dentro do próprio `mapas.html`**, um bloco por estado que só é lido quando o estado é escolhido. Por isso o arquivo é grande (cerca de 4,4 MB, ou 1,4 MB compactado quando o servidor comprime) e não é preciso enviar nenhuma pasta junto.
 

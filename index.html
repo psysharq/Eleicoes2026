@@ -277,6 +277,11 @@ main{grid-template-columns:minmax(0,1fr)}
 .tl-leitura{margin:8px 0 0;min-height:1.6em;font-size:1.05rem;font-weight:500}
 .tl-leg{display:flex;flex-wrap:wrap;gap:4px 14px;list-style:none;margin:6px 0 0;padding:0;font-size:.9rem}
 .tl-leg li::before{content:"";display:inline-block;width:18px;height:4px;border-radius:2px;margin-right:6px;vertical-align:3px;background:var(--c)}
+
+/* Link para a página de mapas */
+.link-mapas{display:inline-block;margin-top:10px;padding:8px 14px;border:1px solid var(--linha);border-radius:20px;background:var(--cartao);color:var(--tinta);font-weight:600;font-size:.95rem;text-decoration:none}
+.link-mapas:hover{border-color:var(--tinta)}
+.link-mapas:focus-visible{outline:3px solid var(--confirma);outline-offset:2px}
 </style>
 </head>
 <body>
@@ -285,6 +290,7 @@ main{grid-template-columns:minmax(0,1fr)}
     <div>
       <h1>Apuração das Eleições 2026</h1>
       <p>Resultados oficiais lidos direto dos arquivos públicos do TSE.</p>
+      <a class="link-mapas" href="mapas.html">Mapas por região e por cidade <span aria-hidden="true">→</span></a>
     </div>
     <div class="sino-wrap">
       <button type="button" id="sino" class="sino" aria-label="Avisos" aria-expanded="false" aria-controls="painel-avisos">
