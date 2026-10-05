@@ -267,6 +267,16 @@ main{grid-template-columns:minmax(0,1fr)}
 .cartao,.painel-aba{min-width:0}
 
 #turno[hidden],#tela-wrap[hidden]{display:none}
+
+.aviso[hidden]{display:none}
+
+/* Linha do tempo */
+.tl-graf svg{width:100%;height:auto;display:block;touch-action:pan-y}
+.tl-eixo{stroke:var(--linha);stroke-width:1}
+.tl-rot{fill:var(--apagado);font:500 16px "Barlow",system-ui,sans-serif}
+.tl-leitura{margin:8px 0 0;min-height:1.6em;font-size:1.05rem;font-weight:500}
+.tl-leg{display:flex;flex-wrap:wrap;gap:4px 14px;list-style:none;margin:6px 0 0;padding:0;font-size:.9rem}
+.tl-leg li::before{content:"";display:inline-block;width:18px;height:4px;border-radius:2px;margin-right:6px;vertical-align:3px;background:var(--c)}
 </style>
 </head>
 <body>
@@ -402,11 +412,6 @@ main{grid-template-columns:minmax(0,1fr)}
       <dl class="resumo" id="resumo"></dl>
       <ol class="cands" id="cands"></ol>
       <p class="legenda50" id="leg50" hidden>A linha vertical marca 50% dos votos válidos, o necessário para vencer no 1º turno.</p>
-      <div class="evol" id="evol" hidden>
-        <h3>Evolução durante a apuração</h3>
-        <div id="evol-svg"></div>
-        <p class="meta" style="margin:4px 0 0">Montado com as leituras feitas por esta página desde que ela foi aberta.</p>
-      </div>
       <div class="botoes"><button type="button" id="comp-pres">Compartilhar imagem</button></div>
       <details>
         <summary>Endereço consultado e JSON bruto</summary>
@@ -414,7 +419,32 @@ main{grid-template-columns:minmax(0,1fr)}
         <pre id="bruto"></pre>
       </details>
     </section>
+    <section class="cartao" id="tl-card" aria-labelledby="tl-titulo">
+      <h2 id="tl-titulo">Linha do tempo da apuração</h2>
+      <p class="meta" id="tl-sub" style="margin:2px 0 0"></p>
+      <div class="controles" style="margin-top:12px">
+        <select id="tl-modo" aria-label="O que o gráfico mostra">
+          <option value="pct" selected>Percentual de cada candidato</option>
+          <option value="votos">Votos acumulados</option>
+          <option value="apurado">Quanto já foi apurado</option>
+        </select>
+        <select id="tl-escopo" aria-label="Quais votos entram">
+          <option value="tudo" selected>Brasil, com o exterior</option>
+          <option value="pais">Só voto dado no Brasil (sem o exterior)</option>
+          <option value="ext">Só exterior</option>
+        </select>
+      </div>
+      <div class="tl-graf" id="tl-grafico"></div>
+      <p class="tl-leitura num" id="tl-leitura" aria-live="polite"></p>
+      <ul class="tl-leg" id="tl-leg"></ul>
+      <div class="botoes">
+        <button type="button" id="tl-baixar">Baixar histórico (JSON)</button>
+        <button type="button" id="tl-limpar">Limpar histórico</button>
+      </div>
+      <p class="meta" id="tl-nota" style="margin:10px 0 0">O TSE não publica o histórico da apuração em 2026. Esta linha do tempo é montada com as leituras que esta página faz e fica salva neste aparelho. Para ver a noite toda, deixe a página aberta com "Manter tela acesa" ligado.</p>
+    </section>
   </div>
+
 
   <div class="painel-aba" id="aba-maj" role="tabpanel" hidden>
     <section class="cartao" aria-live="polite">
@@ -457,6 +487,7 @@ main{grid-template-columns:minmax(0,1fr)}
         <div class="segmentos" id="dep-seg" aria-hidden="true"></div>
       </div>
       <div class="contador"><b class="num" id="dep-n">0</b><span id="dep-n-txt">eleitos até agora</span></div>
+      <p class="aviso" id="dep-parcial" hidden></p>
       <div class="hemi" id="dep-hemi"></div>
       <input type="search" class="busca" id="dep-busca" placeholder="Buscar candidato por nome, número ou partido" aria-label="Buscar candidato">
       <div id="dep-listas">
@@ -658,6 +689,8 @@ main{grid-template-columns:minmax(0,1fr)}
       a.cands.forEach(function(c, i){ c.proj = i < a.vag && (c.votos||0) > 0; });
     });
     var s = d.s || {}, e = d.e || {}, v = d.v || {};
+    var pstNum = num(s.pst !== undefined && s.pst !== "" ? s.pst : achar(d, ["pst"]));
+    cands.forEach(function(c){ c.pstInfo = pstNum; });
     var g = function(o, k){ return o[k] !== undefined && o[k] !== "" ? o[k] : achar(d, [k]); };
     return {
       pst: num(g(s,"pst")), ts: num(g(s,"ts")), st: num(s.st),
@@ -927,7 +960,9 @@ main{grid-template-columns:minmax(0,1fr)}
     if (c.sit === "nao") return "";
     var vagas = nv || (cargo === "5" ? 2 : 1);
     if ((cargo === "1" || cargo === "3" || cargo === "5") && pos !== undefined && pos < vagas && (c.votos||0) > 0) return '<span class="chip frente">Na frente</span>';
-    if ((cargo === "6" || cargo === "7") && c.proj) return '<span class="chip projecao" title="Dentro das vagas já conquistadas pelo partido ou federação">Se elegendo</span>';
+    if ((cargo === "6" || cargo === "7") && c.proj) return muitoParcial(c.pstInfo)
+      ? '<span class="chip projecao" title="Conta parcial do TSE com poucas urnas apuradas: muda bastante">Projeção</span>'
+      : '<span class="chip projecao" title="Dentro das vagas já conquistadas pelo partido ou federação">Se elegendo</span>';
     return "";
   }
   function vicesHTML(c, cargo, abr){
@@ -958,11 +993,13 @@ main{grid-template-columns:minmax(0,1fr)}
     return Array.from({length:50}, function(_,i){ return '<i class="'+(i<on?"on":"")+'"></i>'; }).join("");
   }
   function marcarHora(info){
-    var dt = info.dt || info.dg, ht = info.dt ? info.ht : info.hg;
+    // dg/hg = quando o TSE gerou o arquivo (horário de Brasília). dt/ht é a última seção totalizada, às vezes no fuso do local (ex.: exterior).
+    var dt = info.dg || info.dt, ht = info.dg ? info.hg : info.ht;
     $("hora").textContent = (cfg().demo ? "Demonstração com números inventados, não é resultado real nem pesquisa. " : "") +
       (staleDesde !== null ? "Atenção: dados desatualizados (de " + hora(staleDesde) + "), o TSE não respondeu na última tentativa. " : "") +
-      (dt ? "Totalização de " + dt + (ht ? " às " + ht : "") + "." : "");
+      (dt ? "Arquivo do TSE gerado em " + dt + (ht ? " às " + ht : "") + " (horário de Brasília)." : "");
   }
+  function muitoParcial(p){ return p !== null && p < 50; }
   function diferenca(info, cargo){
     var c = info.cands, p = info.pst, nv = cargo === "5" ? (info.nv || 2) : 1;
     if (c.length <= nv || !(c[0].votos > 0)) return "";
@@ -975,7 +1012,8 @@ main{grid-template-columns:minmax(0,1fr)}
       var faltam = info.ts && info.st !== null ? info.ts - info.st : null;
       txt += " Faltam " + pct1(100 - p) + " das seções" + (faltam ? " (" + inteiro(faltam) + ")" : "") + ".";
     }
-    if ((cargo === "1" || cargo === "3") && c[0].pct !== null) txt += c[0].pct > 50 ? " Hoje, venceria no 1º turno." : " Hoje, haveria 2º turno.";
+    if (muitoParcial(p)) txt += " Resultado ainda muito parcial: a ordem em que as urnas chegam distorce o quadro e não indica quem vai vencer.";
+    else if ((cargo === "1" || cargo === "3") && c[0].pct !== null) txt += c[0].pct > 50 ? " Hoje, venceria no 1º turno." : " Hoje, haveria 2º turno.";
     return txt;
   }
 
@@ -1121,7 +1159,7 @@ main{grid-template-columns:minmax(0,1fr)}
 
   /* ================= aba Presidente: detalhe, evolução e município ================= */
   function abrPres(){ return elMun.value && elUf.value !== "br" ? elUf.value + elMun.value : elUf.value; }
-  function limparPres(){ ["cands","resumo","seg","evol-svg"].forEach(function(id){ $(id).innerHTML = ""; }); $("pct").textContent = "–"; $("dif").innerHTML = ""; $("evol").hidden = true; $("leg50").hidden = true; presInfo = null; }
+  function limparPres(){ ["cands","resumo","seg"].forEach(function(id){ $(id).innerHTML = ""; }); $("pct").textContent = "–"; $("dif").innerHTML = ""; $("leg50").hidden = true; presInfo = null; }
   function carregarMunicipios(){
     var uf = elUf.value;
     $("mun-linha").hidden = uf === "br";
@@ -1154,46 +1192,7 @@ main{grid-template-columns:minmax(0,1fr)}
     }).catch(function(){ preencher(null); });
   }
   function chaveHist(abr){ return "hist:" + elAmb.value + ":" + eleFor("1") + ":" + abr; }
-  function registrarHistorico(abr, info){
-    if (info.pst === null || !info.cands.length || !(info.cands[0].votos > 0)) return;
-    var k = chaveHist(abr), h = cfg().demo ? (historicoDemo[k] = historicoDemo[k] || []) : (ler(k) || []);
-    var ultimo = h[h.length-1];
-    if (ultimo && ultimo.p === info.pst) return;
-    var v = {}; info.cands.slice(0, 6).forEach(function(c){ v[chave(c)] = c.pct; });
-    h.push({ p: info.pst, t: Date.now(), v: v });
-    if (h.length > 400) h.splice(0, h.length - 400);
-    if (!cfg().demo) gravar(k, h);
-  }
-  function pintarEvolucao(abr, info){
-    var h = cfg().demo ? historicoDemo[chaveHist(abr)] : ler(chaveHist(abr));
-    if (!h || h.length < 2){ $("evol").hidden = true; return; }
-    var top = info.cands.slice(0, 4), W = 600, H = 260, L = 34, R = 110, T = 12, B = 28;
-    var maxY = 0; h.forEach(function(pnt){ top.forEach(function(c){ var y = pnt.v[chave(c)]; if (y > maxY) maxY = y; }); });
-    maxY = Math.max(10, Math.ceil((maxY + 4)/10)*10);
-    var minX = h[0].p, maxX = Math.max(h[h.length-1].p, minX + 1);
-    var X = function(p){ return L + (p - minX)/(maxX - minX)*(W - L - R); }, Y = function(v){ return T + (1 - v/maxY)*(H - T - B); };
-    var cores = top.map(function(c, i){ return c.lado === "lula" ? "var(--lula)" : c.lado === "flavio" ? "var(--flavio)" : ["#6B7280","#B08A2E","#3F8F5F","#7B5EA7"][i]; });
-    var g = "";
-    for (var y=0; y<=maxY; y+=10) g += '<line class="eixo" x1="'+L+'" x2="'+(W-R)+'" y1="'+Y(y)+'" y2="'+Y(y)+'"/><text x="'+(L-6)+'" y="'+(Y(y)+4)+'" text-anchor="end">'+y+'%</text>';
-    g += '<text x="'+L+'" y="'+(H-8)+'">'+pct1(minX)+' apurado</text><text x="'+(W-R)+'" y="'+(H-8)+'" text-anchor="end">'+pct1(maxX)+'</text>';
-    if (maxY > 50) g += '<line x1="'+L+'" x2="'+(W-R)+'" y1="'+Y(50)+'" y2="'+Y(50)+'" stroke="var(--tinta)" stroke-dasharray="4 4" opacity=".5"/>';
-    var rotulos = [];
-    top.forEach(function(c, i){
-      var pts = h.filter(function(pnt){ return pnt.v[chave(c)] !== undefined; }).map(function(pnt){ return X(pnt.p).toFixed(1) + "," + Y(pnt.v[chave(c)]).toFixed(1); });
-      if (pts.length < 2) return;
-      g += '<polyline points="'+pts.join(" ")+'" fill="none" stroke="'+cores[i]+'" stroke-width="2.5" stroke-linejoin="round"/>';
-      var ult = pts[pts.length-1].split(","); rotulos.push({ y:+ult[1], txt:c.nome.split(" ")[0] + " " + pct1(c.pct), cor:cores[i] });
-    });
-    rotulos.sort(function(a,b){ return a.y - b.y; }).forEach(function(r, i, arr){ if (i && r.y - arr[i-1].y < 14) r.y = arr[i-1].y + 14; });
-    rotulos.forEach(function(r){ g += '<text class="rot" x="'+(W-R+6)+'" y="'+(r.y+4)+'" fill="'+r.cor+'" style="fill:'+r.cor+'">'+esc(r.txt)+'</text>'; });
-    $("evol-svg").innerHTML = '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Evolução dos percentuais conforme a apuração avança">'+g+'</svg>';
-    $("evol").hidden = false;
-  }
-  $("regioes").addEventListener("click", function(ev){
-    if (!ev.target.closest("#ver-ext")) return;
-    elUf.value = "zz"; trocarUfPres();
-    $("r-titulo").scrollIntoView({behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth"});
-  });
+  /* o gráfico antigo de evolução foi substituído pela linha do tempo (veja tlRegistrar) */
   function preencherUfs(){
     elUf.innerHTML = '<option value="br">Brasil</option><option value="zz">Exterior (brasileiros no exterior)</option>' + UFS.map(function(u){ return '<option value="'+u.toLowerCase()+'">'+NOMES[u]+'</option>'; }).join("");
     elMajUf.innerHTML = UFS.map(function(u){ return '<option value="'+u.toLowerCase()+'">'+NOMES[u]+'</option>'; }).join("");
@@ -1225,7 +1224,6 @@ main{grid-template-columns:minmax(0,1fr)}
       }).join("");
       $("cands").innerHTML = listaHTML(info, "1", "br");
       $("leg50").hidden = false;
-      registrarHistorico(abr, info); pintarEvolucao(abr, info);
       verificarMudancas("1", abr, info);
       marcarHora(info);
       return 200;
@@ -1330,6 +1328,7 @@ main{grid-template-columns:minmax(0,1fr)}
     var brasil = abr === "br";
     $("dep-busca").hidden = brasil; $("dep-listas").hidden = brasil; $("comp-dep").hidden = brasil;
     if (brasil) return pintarCamara();
+    $("dep-parcial").hidden = true;
     var info = depInfo;
     if (!info){ ["dep-eleitos","dep-fora","dep-hemi"].forEach(function(id){ $(id).innerHTML = ""; }); $("dep-n").textContent = "0"; $("dep-pct").textContent = "–"; $("dep-seg").innerHTML = ""; $("dep-mais").hidden = true; return; }
     if (info === 404){
@@ -1343,8 +1342,13 @@ main{grid-template-columns:minmax(0,1fr)}
     var dentro = info.cands.filter(function(c){ return c.sit === "eleito" || (c.sit === "" && c.proj); });
     var eleitos = dentro.filter(function(c){ return c.sit === "eleito"; }).length;
     var fora = info.cands.filter(function(c){ return dentro.indexOf(c) < 0; });
+    var parcial = muitoParcial(info.pst);
+    $("dep-parcial").hidden = !parcial;
+    $("dep-parcial").textContent = parcial ? "Apuração em " + pct(info.pst) + ": o TSE já distribui as vagas pela conta parcial, mas isso muda bastante até o fim. Não trate estes nomes como eleitos." : "";
     $("dep-n").textContent = dentro.length;
-    $("dep-n-txt").textContent = "de " + (info.nv || "?") + " vagas com eleito ou candidato se elegendo em " + NOMES[abr.toUpperCase()] + (eleitos ? " (" + eleitos + " já eleitos)" : "");
+    $("dep-n-txt").textContent = parcial
+      ? "de " + (info.nv || "?") + " vagas na conta parcial do TSE em " + NOMES[abr.toUpperCase()] + (eleitos ? " (" + eleitos + " já eleitos)" : "")
+      : "de " + (info.nv || "?") + " vagas com eleito ou candidato se elegendo em " + NOMES[abr.toUpperCase()] + (eleitos ? " (" + eleitos + " já eleitos)" : "");
     var cont = {}; dentro.forEach(function(c){ cont[c.partido || "Sem partido"] = (cont[c.partido || "Sem partido"]||0) + 1; });
     $("dep-hemi").innerHTML = info.nv ? blocoHemiciclo(cont, info.nv, "vagas") : "";
     function linha(c){
@@ -1358,7 +1362,7 @@ main{grid-template-columns:minmax(0,1fr)}
       $("dep-eleitos").style.counterReset = "pos";
       $("dep-fora-titulo").hidden = true; $("dep-fora").innerHTML = ""; $("dep-mais").hidden = true;
     } else {
-      $("dep-eleitos-titulo").textContent = "Eleitos e se elegendo";
+      $("dep-eleitos-titulo").textContent = parcial ? "Dentro das vagas (conta parcial)" : "Eleitos e se elegendo";
       $("dep-eleitos").innerHTML = dentro.length ? dentro.map(linha).join("") : '<li class="vazio-msg">Ainda não há vagas distribuídas. Elas aparecem conforme a apuração avança.</li>';
       $("dep-fora-titulo").hidden = false;
       $("dep-fora").innerHTML = fora.slice(0, depLimite).map(linha).join("");
@@ -1369,6 +1373,7 @@ main{grid-template-columns:minmax(0,1fr)}
   }
   function pintarCamara(){
     if (!depBRAtivo){
+      $("dep-parcial").hidden = true;
       $("dep-pct").textContent = "–"; $("dep-seg").innerHTML = ""; $("dep-n").textContent = "0"; $("dep-pct-rot").textContent = "das seções totalizadas";
       $("dep-n-txt").textContent = "de 513 cadeiras distribuídas";
       $("dep-hemi").innerHTML = '<p class="meta" style="margin:0 0 10px">A Câmara inteira exige ler o arquivo de cada um dos 27 estados (um por vez, espaçados). Para consultar só um estado, escolha-o acima.</p><button type="button" class="primario" id="camara-carregar">Carregar os 27 estados</button>';
@@ -1381,6 +1386,8 @@ main{grid-template-columns:minmax(0,1fr)}
       eleitos += info.cands.filter(function(c){ return c.sit === "eleito"; }).length;
     });
     var media = com ? pstSoma/com : null;
+    $("dep-parcial").hidden = !muitoParcial(media);
+    $("dep-parcial").textContent = muitoParcial(media) ? "Apuração em cerca de " + pct(media) + ": as cadeiras abaixo são a conta parcial do TSE e mudam bastante até o fim. Não são deputados eleitos." : "";
     $("dep-pct").textContent = media === null ? "–" : pct(media);
     $("dep-pct-rot").textContent = "média das seções totalizadas nos estados lidos (" + com + " de 27)";
     $("dep-seg").innerHTML = segmentos(media);
@@ -1449,6 +1456,177 @@ main{grid-template-columns:minmax(0,1fr)}
   }
   $("comp-pres").addEventListener("click", function(){ if (presInfo) compartilhar(presInfo, "1", abrPres()); else toast("Ainda não há resultado para compartilhar."); });
 
+
+  /* ================= linha do tempo da apuração ================= */
+  var tlEstado = null, tlDemo = null, tlGeo = null;
+  var TL_MAX = 1500;
+  function tlChave(){ return "tl:" + elAmb.value + ":" + eleFor("1"); }
+  function tlCarregar(){
+    if (cfg().demo){ if (!tlDemo) tlDemo = { v:1, nomes:[], pts:[] }; return tlDemo; }
+    var k = tlChave();
+    if (tlEstado && tlEstado.k === k) return tlEstado;
+    var o = ler(k);
+    tlEstado = o && o.pts ? o : { v:1, nomes:[], pts:[] };
+    tlEstado.k = k; return tlEstado;
+  }
+  function tlGravar(){
+    if (cfg().demo || !tlEstado) return;
+    gravar(tlEstado.k, { v:1, nomes:tlEstado.nomes, pts:tlEstado.pts, semeado:!!tlEstado.semeado });
+  }
+  // Data/hora de geração do arquivo, em horário de Brasília (UTC-3, sem horário de verão), como instante
+  function tlTempo(info){
+    var m = String(info.dg||"").match(/(\d{2})\/(\d{2})\/(\d{4})/), n = String(info.hg||"").match(/(\d{2}):(\d{2}):(\d{2})/);
+    return m && n ? Date.UTC(+m[3], +m[2]-1, +m[1], +n[1]+3, +n[2], +n[3]) : Date.now();
+  }
+  function tlHora(t){ return new Date(t).toLocaleTimeString("pt-BR", { hour:"2-digit", minute:"2-digit", timeZone:"America/Sao_Paulo" }); }
+  function tlSoma(v){ return v ? v.reduce(function(a,x){ return a + (x||0); }, 0) : 0; }
+  // Pontos de leituras antigas desta página (só percentuais), usados para completar o começo da noite
+  function tlSemear(br){
+    var tl = tlCarregar();
+    if (tl.semeado || cfg().demo) return;
+    tl.semeado = true;
+    var h = null;
+    ["hist:" + elAmb.value + ":" + eleFor("1") + ":br", "hist:" + elAmb.value + ":1:br"].some(function(k){ var x = ler(k); if (x && x.length){ h = x; return true; } return false; });
+    if (!h) return;
+    var nomePorChave = {}; br.cands.forEach(function(c){ nomePorChave[chave(c)] = c.nome; });
+    var t0 = tl.pts.length ? tl.pts[0][0] : Infinity, sem = [];
+    h.forEach(function(p){
+      if (!(p.t < t0) || p.p === null || p.p === undefined) return;
+      var pc = tl.nomes.map(function(n){ return null; });
+      Object.keys(p.v || {}).forEach(function(k){ var i = tl.nomes.indexOf(nomePorChave[k]); if (i >= 0) pc[i] = p.v[k]; });
+      sem.push([p.t, p.p, null, null, null, pc]);
+    });
+    tl.pts = sem.concat(tl.pts);
+  }
+  function tlRegistrar(br, zz){
+    if (!br || !br.cands.length) return;
+    var tl = tlCarregar();
+    br.cands.forEach(function(c){ if (tl.nomes.indexOf(c.nome) < 0) tl.nomes.push(c.nome); });
+    var alinha = function(info){ if (!info) return null; var m = {}; info.cands.forEach(function(c){ m[c.nome] = c.votos || 0; }); return tl.nomes.map(function(n){ return m[n] || 0; }); };
+    var b = alinha(br), z = alinha(zz), soma = tlSoma(b);
+    if (!(soma > 0)) return;
+    tlSemear(br);
+    var t = tlTempo(br), ult = tl.pts[tl.pts.length - 1];
+    if (ult && ult[3] && tlSoma(ult[3]) === soma && tlSoma(ult[4]) === tlSoma(z)) return;          // nada mudou desde a última leitura
+    if (ult && t <= ult[0]) t = ult[0] + 1;
+    tl.pts.push([t, br.pst, zz ? zz.pst : null, b, z, null]);
+    if (tl.pts.length > TL_MAX){                                                                     // guarda tudo, mas afina o começo
+      var meio = Math.floor(tl.pts.length / 2);
+      tl.pts = tl.pts.slice(0, meio).filter(function(_, i){ return i % 2 === 0; }).concat(tl.pts.slice(meio));
+    }
+    tlGravar(); tlDesenhar();
+  }
+  function tlColetar(){
+    return baixar(url("1","br")).then(function(r){
+      if (r.status !== 200 || r.antigo) return;
+      var br = parse(r.dados);
+      return baixar(url("1","zz")).then(function(z){ return z.status === 200 && !z.antigo ? parse(z.dados) : null; }, function(){ return null; })
+        .then(function(zz){ tlRegistrar(br, zz); });
+    }).catch(function(){});
+  }
+  function tlSerie(modo, esc){
+    var tl = tlCarregar(), serie = [];
+    tl.pts.forEach(function(p){
+      var t = p[0], pb = p[1], pz = p[2], b = p[3], z = p[4], pc = p[5];
+      if (modo === "apurado"){ var ap = esc === "ext" ? pz : pb; if (ap !== null && ap !== undefined) serie.push({ t:t, ap:ap }); return; }
+      if (b){
+        var v;
+        if (esc === "ext"){ if (!z) return; v = z; }
+        else if (esc === "pais"){ if (!z) return; v = b.map(function(x, i){ return Math.max(0, x - (z[i] || 0)); }); }
+        else v = b;
+        var tot = tlSoma(v); if (!(tot > 0)) return;
+        serie.push({ t:t, v:v, tot:tot });
+      } else if (pc && modo === "pct" && esc === "tudo") serie.push({ t:t, pc:pc });
+    });
+    return serie;
+  }
+  var TL_CORES = ["#6B7280", "#B08A2E", "#3F8F5F", "#7B5EA7", "#2F8C9A"];
+  function tlDesenhar(){
+    var tl = tlCarregar(), modo = $("tl-modo").value, esc = $("tl-escopo").value;
+    var serie = tlSerie(modo, esc), alvo = $("tl-grafico");
+    var reais = tl.pts.filter(function(p){ return p[3]; }).length;
+    $("tl-sub").textContent = tl.pts.length ? tl.pts.length + " leitura" + (tl.pts.length === 1 ? "" : "s") + ", das " + tlHora(tl.pts[0][0]) + " às " + tlHora(tl.pts[tl.pts.length-1][0]) + " (horário de Brasília)." : "Ainda sem leituras.";
+    tlGeo = null; $("tl-leg").innerHTML = ""; $("tl-leitura").textContent = "";
+    if (serie.length < 2){
+      alvo.innerHTML = '<p class="vazio-msg">' + (!tl.pts.length ? 'A linha do tempo começa quando o TSE publicar os primeiros votos e aparece com 2 ou mais leituras.'
+        : esc !== "tudo" && modo !== "apurado" && !reais ? 'Esta visão precisa de leituras novas, com votos do Brasil e do exterior. Aguarde a próxima atualização.'
+        : 'Há poucas leituras para desenhar (' + serie.length + '). Mantenha a página aberta e atualizando.') + '</p>';
+      return;
+    }
+    var W = 560, H = 330, L = 56, R = 16, T = 18, B = 36, t0 = serie[0].t, t1 = Math.max(serie[serie.length-1].t, t0 + 60000);
+    var X = function(t){ return L + (t - t0) / (t1 - t0) * (W - L - R); };
+    var linhas = [], maxY = 0, fmtY, nomes = tl.nomes;
+    if (modo === "apurado"){
+      linhas.push({ nome:"Seções apuradas", cor:"var(--confirma)", y: serie.map(function(p){ return p.ap; }), unid:"pct" });
+      maxY = 100; fmtY = function(v){ return v + "%"; };
+    } else {
+      var ult = serie[serie.length - 1], valor = function(p, i){ return p.v ? (modo === "pct" ? p.v[i] / p.tot * 100 : p.v[i]) : (p.pc ? p.pc[i] : null); };
+      var ordem = nomes.map(function(n, i){ return i; }).sort(function(a, b){ return (valor(ult, b) || 0) - (valor(ult, a) || 0); });
+      var escolhidos = ordem.slice(0, 4);
+      nomes.forEach(function(n, i){ var l = lado(n); if ((l === "lula" || l === "flavio") && escolhidos.indexOf(i) < 0) escolhidos.push(i); });
+      var extras = 0;
+      escolhidos.sort(function(a, b){ return (valor(ult, b) || 0) - (valor(ult, a) || 0); }).forEach(function(i){
+        var l = lado(nomes[i]), cor = l === "lula" ? "var(--lula)" : l === "flavio" ? "var(--flavio)" : TL_CORES[extras++ % TL_CORES.length];
+        var ys = serie.map(function(p){ var y = valor(p, i); return y === undefined ? null : y; });
+        ys.forEach(function(y){ if (y > maxY) maxY = y; });
+        linhas.push({ nome:nomes[i], cor:cor, y:ys, unid:modo });
+      });
+      if (modo === "pct"){ maxY = Math.max(10, Math.ceil((maxY + 3) / 10) * 10); fmtY = function(v){ return v + "%"; }; }
+      else { var passo = Math.pow(10, Math.floor(Math.log10(maxY || 1))); maxY = Math.ceil(maxY * 1.05 / passo) * passo; fmtY = function(v){ return v >= 1e6 ? (v/1e6).toLocaleString("pt-BR", {maximumFractionDigits:1}) + " mi" : v >= 1e3 ? Math.round(v/1e3) + " mil" : String(v); }; }
+    }
+    var Y = function(v){ return T + (1 - v / maxY) * (H - T - B); }, g = "";
+    for (var k = 0; k <= 4; k++){ var yv = maxY * k / 4; g += '<line class="tl-eixo" x1="'+L+'" x2="'+(W-R)+'" y1="'+Y(yv).toFixed(1)+'" y2="'+Y(yv).toFixed(1)+'"/><text class="tl-rot" x="'+(L-6)+'" y="'+(Y(yv)+4).toFixed(1)+'" text-anchor="end">'+fmtY(Math.round(yv * 10) / 10)+'</text>'; }
+    if (modo === "pct" && maxY >= 50) g += '<line x1="'+L+'" x2="'+(W-R)+'" y1="'+Y(50).toFixed(1)+'" y2="'+Y(50).toFixed(1)+'" stroke="var(--tinta)" stroke-dasharray="4 4" opacity=".45"/><text class="tl-rot" x="'+(W-R)+'" y="'+(Y(50)-4).toFixed(1)+'" text-anchor="end">50%</text>';
+    var passos = [1,2,5,10,15,30,60,120,180,360,720], dur = (t1 - t0) / 60000, pm = passos[passos.length-1];
+    for (var q = 0; q < passos.length; q++) if (dur / passos[q] <= 6){ pm = passos[q]; break; }
+    for (var tk = Math.ceil(t0 / (pm * 60000)) * pm * 60000; tk <= t1; tk += pm * 60000) g += '<line class="tl-eixo" x1="'+X(tk).toFixed(1)+'" x2="'+X(tk).toFixed(1)+'" y1="'+T+'" y2="'+(H-B)+'" opacity=".5"/><text class="tl-rot" x="'+X(tk).toFixed(1)+'" y="'+(H-12)+'" text-anchor="middle">'+tlHora(tk)+'</text>';
+    linhas.forEach(function(l){
+      var pts = [];
+      serie.forEach(function(p, i){ if (l.y[i] !== null && l.y[i] !== undefined) pts.push(X(p.t).toFixed(1) + "," + Y(l.y[i]).toFixed(1)); });
+      if (pts.length > 1) g += '<polyline points="'+pts.join(" ")+'" fill="none" stroke="'+l.cor+'" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round"/>';
+      if (serie.length <= 40) serie.forEach(function(p, i){ if (l.y[i] !== null && l.y[i] !== undefined) g += '<circle cx="'+X(p.t).toFixed(1)+'" cy="'+Y(l.y[i]).toFixed(1)+'" r="3.6" fill="'+l.cor+'"/>'; });
+    });
+    g += '<line id="tl-cursor" y1="'+T+'" y2="'+(H-B)+'" stroke="var(--tinta)" stroke-width="1" opacity="0" />';
+    alvo.innerHTML = '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Linha do tempo da apuração: '+(modo === "apurado" ? "percentual de seções apuradas" : modo === "pct" ? "percentual de cada candidato" : "votos acumulados")+' ao longo do tempo">'+g+'</svg>';
+    tlGeo = { serie:serie, linhas:linhas, X:X, W:W, L:L, R:R, modo:modo, fmt: function(v, unid){ return unid === "votos" ? Math.round(v).toLocaleString("pt-BR") : v.toLocaleString("pt-BR", {minimumFractionDigits:1, maximumFractionDigits:2}) + "%"; } };
+    tlLeitura(serie.length - 1);
+    $("tl-leg").innerHTML = linhas.map(function(l){ return '<li style="--c:'+l.cor+'">'+esc2(l.nome)+'</li>'; }).join("");
+  }
+  function esc2(s){ return esc(s); }
+  var TITULOS = ["ESCRITOR","ESCRITORA","VETERINARIO","VETERINARIA","PROFESSOR","PROFESSORA","DOUTOR","DOUTORA","DR","DRA","CORONEL","DELEGADO","DELEGADA","PASTOR","PASTORA","PADRE","CAPITAO","SARGENTO","JUIZ","JUIZA","MEDICO","MEDICA","ADVOGADO","ADVOGADA","COMANDANTE","GENERAL","MAJOR","CABO","SOLDADO"];
+  function nomeCurto(n){
+    var l = lado(n); if (l === "lula") return "Lula"; if (l === "flavio") return "Flávio";
+    var p = String(n).trim().split(/\s+/), w = p[0];
+    if (p.length > 1 && TITULOS.indexOf(norm(w)) >= 0) w = p[1];
+    return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+  }
+  function tlLeitura(i){
+    if (!tlGeo) return;
+    var p = tlGeo.serie[i], partes = [tlHora(p.t)];
+    tlGeo.linhas.forEach(function(l){ if (l.y[i] !== null && l.y[i] !== undefined) partes.push(nomeCurto(l.nome) + " " + tlGeo.fmt(l.y[i], l.unid)); });
+    $("tl-leitura").textContent = partes.join("  ·  ");
+    var cur = $("tl-cursor"); if (cur){ var x = tlGeo.X(p.t); cur.setAttribute("x1", x); cur.setAttribute("x2", x); cur.setAttribute("opacity", ".55"); }
+  }
+  $("tl-grafico").addEventListener("pointermove", function(ev){
+    if (!tlGeo) return;
+    var svg = $("tl-grafico").querySelector("svg"); if (!svg) return;
+    var r = svg.getBoundingClientRect(), x = (ev.clientX - r.left) / r.width * tlGeo.W, melhor = 0, d = Infinity;
+    tlGeo.serie.forEach(function(p, i){ var dx = Math.abs(tlGeo.X(p.t) - x); if (dx < d){ d = dx; melhor = i; } });
+    tlLeitura(melhor);
+  });
+  $("tl-modo").addEventListener("change", tlDesenhar);
+  $("tl-escopo").addEventListener("change", tlDesenhar);
+  $("tl-baixar").addEventListener("click", function(){
+    var tl = tlCarregar(), dados = { gerado_em:new Date().toISOString(), ambiente:elAmb.value, eleicao:eleFor("1"), nomes:tl.nomes,
+      formato:"[instante_ms, pct_apurado_Brasil, pct_apurado_exterior, votos_Brasil[], votos_exterior[], pct_candidatos_antigos[]]", pontos:tl.pts };
+    var f = new File([JSON.stringify(dados, null, 1)], "linha-do-tempo-" + elAmb.value + "-" + eleFor("1") + ".json", { type:"application/json" });
+    var u = URL.createObjectURL(f), a = document.createElement("a"); a.href = u; a.download = f.name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){ URL.revokeObjectURL(u); }, 4000);
+  });
+  $("tl-limpar").addEventListener("click", function(){
+    if (!confirm("Apagar o histórico da linha do tempo deste aparelho?")) return;
+    var tl = tlCarregar(); tl.pts = []; tl.nomes = []; tl.semeado = true; tlGravar(); tlDesenhar();
+  });
+
   /* ================= ciclo de leitura ================= */
   function lerEstados(cargo, aoChegar, filtro){
     return UFS.reduce(function(fila, uf){
@@ -1501,7 +1679,8 @@ main{grid-template-columns:minmax(0,1fr)}
       turnoVisto = tn; pintarTurno();
       return lerTudo();
     });
-    tarefa.then(function(){ return favs.length && publicado ? atualizarFavs() : null; })
+    tarefa.then(function(){ return publicado ? tlColetar() : null; })
+      .then(function(){ return favs.length && publicado ? atualizarFavs() : null; })
       .then(function(){
         var antigo = staleDesde !== null, espera;
         if (antigo){
@@ -1555,10 +1734,10 @@ main{grid-template-columns:minmax(0,1fr)}
     else { cacheCiclo = {}; carregarDep().catch(function(){}); }
   });
   function limparTudo(){
-    estados = {}; maj = {"3":{}, "5":{}}; depInfo = null; depBR = {}; favDados = {}; sitAnterior = {};
+    estados = {}; maj = {"3":{}, "5":{}}; depInfo = null; depBR = {}; favDados = {}; sitAnterior = {}; tlEstado = null; tlDemo = null;
     majInfo = null; majTodos = {"3":false,"5":false}; depBRAtivo = false; exterior = null; cacheCiclo = {};
     UFS.forEach(pintarUf); pintarResumoMapa(); if (selUf) pintarDetalheUf(); if (aba === "3" || aba === "5"){ pintarMajSel(); pintarMaj(); } pintarDep(); pintarFavs();
-    limparPres(); carregarMunicipios();
+    limparPres(); carregarMunicipios(); tlDesenhar();
   }
   elAmb.addEventListener("change", function(){
     DEMO = null; elei = null; turnoEsc = "auto"; $("turno").value = "auto"; turnoVisto = null; ultimaDescoberta = 0; falhas = 0; staleDesde = null;
@@ -1608,6 +1787,7 @@ main{grid-template-columns:minmax(0,1fr)}
   preencherUfs();
   pintarFavs();
   pintarSino();
+  tlDesenhar();
   pintarTela();
   pintarTurno();
   ciclo();
