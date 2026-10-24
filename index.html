@@ -283,6 +283,80 @@ main{grid-template-columns:minmax(0,1fr)}
 .link-mapas:hover{border-color:var(--tinta)}
 .link-mapas:focus-visible{outline:3px solid var(--confirma);outline-offset:2px}
 </style>
+<!--TEMA--><style>
+/* TEMA: escuro com neon (não editar à mão; gerado por aplicar_tema.py) */
+html:root:root:root{
+  color-scheme:dark;
+  --papel:#060A08; --tinta:#E8F3EC; --apagado:#93AA9D; --linha:#1F3328; --cartao:#0D1511;
+  --barra:#7FA892; --confirma:#39FF14; --alerta:#FFB020; --fundo-barra:#16231C;
+  --lula:#FF2B3A; --flavio:#2E6BFF; --outro:#6E7F75; --vazio:#15201A; --borda-uf:#39FF14; --cand:#B58CFF;
+  --neon:#39FF14; --neon-suave:rgba(57,255,20,.22); --lateral:236px;
+}
+body{background:var(--papel);background-image:radial-gradient(1200px 500px at 70% -10%,rgba(57,255,20,.07),transparent 60%)}
+.cartao{border-color:rgba(57,255,20,.20);box-shadow:0 0 0 1px rgba(57,255,20,.04) inset,0 6px 22px rgba(0,0,0,.45)}
+header h1,.cartao h2{letter-spacing:.2px}
+a{color:var(--neon)}
+button.primario{background:var(--neon);color:#031006;border-color:var(--neon)}
+select,button{border-color:rgba(57,255,20,.28)}
+select:focus-visible,button:focus-visible,:focus-visible{outline-color:var(--neon)}
+.abas button[aria-selected="true"]{background:var(--neon);color:#031006;border-color:var(--neon)}
+.status{border-left-color:var(--neon)}
+.luz{background:var(--neon);box-shadow:0 0 10px var(--neon)}
+.status.parado .luz{background:var(--outro);box-shadow:none}
+.status.erro .luz{background:var(--alerta);box-shadow:none}
+@keyframes pulso{0%{box-shadow:0 0 0 0 rgba(57,255,20,.55)}70%{box-shadow:0 0 0 10px rgba(57,255,20,0)}100%{box-shadow:0 0 0 0 rgba(57,255,20,0)}}
+
+/* mapas: contorno verde neon, preenchimento por quem lidera (cores vêm de --lula e --flavio) */
+#mapa,#mapa-reg,#mapa-est{filter:drop-shadow(0 0 5px rgba(57,255,20,.55))}
+#mapa path,#mapa-est path,#mapa-reg path.uf{stroke:var(--neon);stroke-linejoin:round}
+#mapa path{stroke-width:1.5}
+#mapa-est path{stroke-width:1.6}
+#mapa-reg path.uf{stroke-width:1.2;stroke-opacity:.8}
+#mapa-reg path.contorno{stroke:var(--neon);stroke-width:3;opacity:1}
+#mapa path.sel,#mapa-est path.sel,#mapa-reg path.sel-reg{stroke:#fff;stroke-width:3.4;stroke-opacity:1}
+#cid-svgwrap path{stroke:rgba(57,255,20,.6)}
+#cid-svgwrap path:hover,#cid-svgwrap path.sel{stroke:#fff}
+
+/* menu lateral */
+.lateral{position:fixed;inset:0 auto 0 0;width:var(--lateral);z-index:30;background:#040806;
+  border-right:1px solid rgba(57,255,20,.28);box-shadow:4px 0 24px rgba(57,255,20,.06);
+  display:flex;flex-direction:column;gap:2px;padding:18px 12px;overflow-y:auto;
+  padding-top:max(18px,env(safe-area-inset-top,0px))}
+.lateral .marca{font:700 1.45rem/1.05 "Barlow Condensed",system-ui,sans-serif;color:var(--neon);
+  text-shadow:0 0 12px rgba(57,255,20,.6);padding:4px 10px 2px;text-decoration:none;display:block}
+.lateral .marca small{display:block;font:500 .78rem "Barlow",system-ui,sans-serif;color:var(--apagado);text-shadow:none;margin-top:3px}
+.lateral h2{font:600 .72rem "Barlow",system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--apagado);margin:16px 10px 4px}
+.lateral a{display:flex;align-items:center;gap:10px;min-height:44px;padding:8px 10px;border-radius:8px;
+  color:var(--tinta);text-decoration:none;font-weight:500;border:1px solid transparent}
+.lateral a:hover{background:rgba(57,255,20,.08)}
+.lateral a[aria-current="page"]{background:rgba(57,255,20,.14);border-color:rgba(57,255,20,.5);color:var(--neon);
+  box-shadow:0 0 14px rgba(57,255,20,.18)}
+.lateral a i{width:8px;height:8px;border-radius:50%;background:currentColor;opacity:.55;flex:none}
+.lateral a[aria-current="page"] i{opacity:1;box-shadow:0 0 8px currentColor}
+.lateral .vs{margin:auto 10px 0;padding-top:16px;font-size:.82rem;color:var(--apagado);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.lateral .vs b{font-weight:600}
+.lateral .vs .l{color:var(--lula)} .lateral .vs .f{color:var(--flavio)}
+.barra-topo{display:none}
+.lateral-fundo{display:none}
+body.com-lateral{padding-left:var(--lateral)}
+@media (min-width:900px){
+  .abas{display:none!important}
+  .link-mapas{display:none!important}
+}
+@media (max-width:899px){
+  body.com-lateral{padding-left:0;padding-top:calc(56px + env(safe-area-inset-top,0px))}
+  .barra-topo{display:flex;position:fixed;inset:0 0 auto 0;z-index:25;align-items:center;gap:12px;
+    height:calc(56px + env(safe-area-inset-top,0px));padding:env(safe-area-inset-top,0px) 12px 0;background:#040806;border-bottom:1px solid rgba(57,255,20,.28)}
+  .barra-topo button{min-height:44px;min-width:44px;padding:0;display:grid;place-items:center;background:transparent;border-color:rgba(57,255,20,.4)}
+  .barra-topo button svg{width:24px;height:24px;stroke:var(--neon);fill:none;stroke-width:2;stroke-linecap:round}
+  .barra-topo span{font:700 1.2rem "Barlow Condensed",system-ui,sans-serif;color:var(--neon);text-shadow:0 0 10px rgba(57,255,20,.5)}
+  .lateral{transform:translateX(-102%);transition:transform .22s ease;width:min(80vw,300px);z-index:40}
+  body.menu-aberto .lateral{transform:none}
+  body.menu-aberto .lateral-fundo{display:block;position:fixed;inset:0;z-index:35;background:rgba(0,0,0,.6)}
+  .abas{top:calc(56px + env(safe-area-inset-top,0px))!important}
+}
+@media (prefers-reduced-motion:reduce){.lateral{transition:none}}
+</style><!--/TEMA-->
 </head>
 <body>
 <main>
@@ -336,7 +410,7 @@ main{grid-template-columns:minmax(0,1fr)}
         <option value="120">A cada 2 min</option>
       </select>
       <select id="amb" aria-label="Ambiente">
-        <option value="oficial">Oficial (4 de outubro)</option>
+        <option value="oficial">Oficial</option>
         <option value="simulado">Simulado do TSE (testes)</option>
         <option value="demo">Demonstração (números inventados)</option>
       </select>
@@ -1831,5 +1905,47 @@ main{grid-template-columns:minmax(0,1fr)}
   ciclo();
 })();
 </script>
+<!--TEMA--><script>
+(function(){
+  var pag = (location.pathname.split("/").pop() || "index.html").toLowerCase();
+  if (pag === "apuracao-2026.html") pag = "index.html";
+  var noIndex = pag === "index.html";
+  var CARGOS = [["1","Presidente"],["3","Governador"],["5","Senador"],["6","Dep. federal"],["7","Dep. estadual"]];
+  var OUTROS = [["mapas.html","Mapas"],["secao.html","Ficha da seção"],["coletor-tse.html","Coletor TSE"]];
+  var h = '<a class="marca" href="index.html">Apuração 2026<small>Resultados do TSE</small></a><h2>Painel</h2>';
+  CARGOS.forEach(function(c){ h += '<a href="index.html#aba-'+c[0]+'" data-aba="'+c[0]+'"><i></i>'+c[1]+'</a>'; });
+  h += '<h2>Ferramentas</h2>';
+  OUTROS.forEach(function(o){ h += '<a href="'+o[0]+'"'+(pag === o[0] ? ' aria-current="page"' : '')+'><i></i>'+o[1]+'</a>'; });
+  h += '<div class="vs"><b class="l">Lula</b><span>×</span><b class="f">Flávio</b><span>Presidente</span></div>';
+  var nav = document.createElement("nav"); nav.className = "lateral"; nav.id = "lateral"; nav.setAttribute("aria-label","Menu principal"); nav.innerHTML = h;
+  var topo = document.createElement("div"); topo.className = "barra-topo";
+  topo.innerHTML = '<button type="button" id="abrir-menu" aria-label="Abrir menu" aria-expanded="false" aria-controls="lateral"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button><span>Apuração 2026</span>';
+  var fundo = document.createElement("div"); fundo.className = "lateral-fundo";
+  document.body.classList.add("com-lateral");
+  document.body.insertBefore(fundo, document.body.firstChild); document.body.insertBefore(nav, document.body.firstChild); document.body.insertBefore(topo, document.body.firstChild);
+  function menu(a){ document.body.classList.toggle("menu-aberto", a); topo.querySelector("button").setAttribute("aria-expanded", String(a)); }
+  topo.querySelector("button").addEventListener("click", function(){ menu(!document.body.classList.contains("menu-aberto")); });
+  fundo.addEventListener("click", function(){ menu(false); });
+  document.addEventListener("keydown", function(e){ if (e.key === "Escape") menu(false); });
+  function marcar(){
+    var sel = document.querySelector('.abas [aria-selected="true"]'), n = sel ? sel.dataset.aba : null;
+    [].forEach.call(nav.querySelectorAll("a[data-aba]"), function(a){
+      if (noIndex && a.dataset.aba === n) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current");
+    });
+  }
+  if (noIndex){
+    nav.addEventListener("click", function(ev){
+      var a = ev.target.closest("a[data-aba]"); if (!a) return;
+      var b = document.querySelector('.abas [data-aba="'+a.dataset.aba+'"]'); if (!b) return;
+      ev.preventDefault(); b.click(); menu(false); window.scrollTo(0,0); marcar(); history.replaceState(null,"","#aba-"+a.dataset.aba);
+    });
+    var abas = document.querySelector(".abas");
+    if (abas) new MutationObserver(marcar).observe(abas, {attributes:true, subtree:true, attributeFilter:["aria-selected"]});
+    var m = /^#aba-(\d)$/.exec(location.hash); if (m){ var b0 = document.querySelector('.abas [data-aba="'+m[1]+'"]'); if (b0) b0.click(); }
+    marcar();
+  }
+  nav.addEventListener("click", function(ev){ if (ev.target.closest("a") && !ev.defaultPrevented) menu(false); });
+})();
+</script><!--/TEMA-->
 </body>
 </html>

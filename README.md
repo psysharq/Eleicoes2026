@@ -130,3 +130,9 @@ Defina a licença que preferir antes de publicar (por exemplo, MIT) e adicione u
 - Presidente e governador seguem o turno escolhido; senador e deputados ficam sempre no 1º turno.
 - Estados em que o governador foi eleito no 1º turno mostram a mensagem "sem 2º turno" em vez de erro.
 - O `coletor-tse.html` agora também baixa os arquivos do 2º turno (presidente, acompanhamento, cidades e governador), para conferir o formato real.
+
+## Layout (tema escuro com neon)
+
+- Menu lateral esquerdo em todas as páginas (no celular vira um menu que abre pelo botão no topo). Os cargos do painel (Presidente, Governador, Senador, Deputados) ficam no menu; o link `index.html#aba-3` abre direto na aba do governador.
+- Tema escuro fixo, contornos do Brasil e dos estados em verde neon, preenchimento por quem lidera: Lula em vermelho e Flávio em azul.
+- As cores ficam nas variáveis do bloco `<!--TEMA-->` no início e no fim de cada página (`--lula`, `--flavio`, `--neon`).
