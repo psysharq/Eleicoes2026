@@ -163,3 +163,9 @@ Defina a licença que preferir antes de publicar (por exemplo, MIT) e adicione u
 - Selo "ao vivo · há N s" ao lado do título do mapa (painel, mapas e telão); vira aviso âmbar "sem atualização há N min" depois de 3 minutos sem leitura.
 - Passar o mouse (ou tocar) num estado abre um balão com Lula %, Flávio %, votos e % apurado.
 - Enquanto o primeiro resultado não chega, o mapa e os números piscam em cinza (esqueleto); sem animação para quem pediu movimento reduzido.
+
+## Ajustes de 24/10 (tarde)
+
+- Selo: verde = ao vivo (com o horário da última leitura); amarelo = atualização automática desligada, TSE sem resposta ou leitura atrasada (mais de 2 intervalos), sempre com a hora da última leitura; cinza = aguardando a primeira leitura.
+- Mapas: "Estados e cidades" é o primeiro cartão; o mapa por região foi retirado da tela (o código continua, só fica escondido no fim do arquivo).
+- Telão: foto dos candidatos (com iniciais se a foto não carregar), barra segmentada de seções totalizadas, botões 1º turno / 2º turno (no 1º turno aparecem os demais candidatos em lista menor) e um cartão pequeno de linha do tempo por hora (demonstração, 1º turno tracejado e 2º turno cheio).

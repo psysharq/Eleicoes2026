@@ -1957,7 +1957,7 @@ svg.esq path{fill:#1B2B22!important;animation:brilho 1.3s ease-in-out infinite}
       .then(function(){
         var antigo = staleDesde !== null, espera;
         if (antigo){
-          falhas++; ultimoErro = falhaCiclo; espera = esperaFalha(falhaCiclo);
+          falhas++; ultimoErro = falhaCiclo; if (window.Selo) Selo.falha(true); espera = esperaFalha(falhaCiclo);
           $("aviso").textContent = "O TSE não respondeu agora. Mostrando os dados de " + hora(staleDesde) + ". Nova tentativa em " + fmtEspera(espera) + ".";
           $("ultima").textContent = ultimaOk ? "Última leitura completa às " + ultimaOk + "." : "Ainda sem leitura completa.";
         } else {
@@ -1970,7 +1970,7 @@ svg.esq path{fill:#1B2B22!important;animation:brilho 1.3s ease-in-out infinite}
         agendar(antigo ? espera : cfg().demo ? 6 : publicado ? +elInt.value : Math.max(ESPERA_404, +elInt.value));
       })
       .catch(function(err){
-        ocupado = false; ultimoFim = Date.now(); ultimoErro = err; falhas++;
+        ocupado = false; ultimoFim = Date.now(); ultimoErro = err; falhas++; if (window.Selo) Selo.falha(true);
         var bloqueio = err.http === 403 || err.http === 429, espera = esperaFalha(err);
         $("aviso").textContent = (err instanceof TypeError
           ? "O navegador não conseguiu ler os arquivos do TSE (sem internet ou bloqueio de CORS)."
@@ -2160,21 +2160,30 @@ svg.esq path{fill:#1B2B22!important;animation:brilho 1.3s ease-in-out infinite}
     function turnoTxt(){ return ele === 6258 ? "2º turno" : "1º turno"; }
     ler(); setInterval(ler, 60000);
   })();
-  // ---- selo "ao vivo": há quanto tempo o painel leu o TSE pela última vez ----
-  var seloT = null, selos = [];
-  window.Selo = { marcar: function(t){ seloT = t || Date.now(); selos.forEach(pintarSelo); } };
+  // ---- selo: verde = ao vivo; amarelo = automática desligada, TSE sem resposta ou leitura atrasada; cinza = aguardando ----
+  var seloT = null, seloFalha = false, selos = [];
+  var elAutoSelo = document.getElementById("auto"), elIntSelo = document.getElementById("intervalo");
+  window.Selo = { marcar: function(t){ seloT = t || Date.now(); seloFalha = false; selos.forEach(pintarSelo); }, falha: function(f){ seloFalha = f !== false; selos.forEach(pintarSelo); } };
+  function clock(t){ return new Date(t).toLocaleTimeString("pt-BR", { hour:"2-digit", minute:"2-digit", timeZone:"America/Sao_Paulo" }); }
   function pintarSelo(el){
-    if (seloT === null){ el.className = "selo espera"; el.textContent = "aguardando leitura…"; return; }
+    var auto = !elAutoSelo || elAutoSelo.checked, iv = elIntSelo ? (+elIntSelo.value || 60) : 60, lim = Math.max(90, iv * 2 + 30);
+    var ult = seloT === null ? "" : " · última leitura " + clock(seloT);
+    if (!auto){ el.className = "selo atraso"; el.textContent = "automática desligada" + (seloT === null ? "" : ult); return; }
+    if (seloT === null){ el.className = "selo espera"; el.textContent = seloFalha ? "sem resposta do TSE" : "aguardando leitura…"; if (seloFalha) el.className = "selo atraso"; return; }
     var s = Math.max(0, Math.round((Date.now() - seloT) / 1000));
-    if (s >= 180){ el.className = "selo atraso"; el.textContent = "sem atualização há " + Math.round(s / 60) + " min"; return; }
+    if (seloFalha){ el.className = "selo atraso"; el.textContent = "sem resposta do TSE" + ult; return; }
+    if (s >= lim){ el.className = "selo atraso"; el.textContent = "leitura atrasada" + ult; return; }
     el.className = "selo";
-    el.textContent = "ao vivo · " + (s < 5 ? "agora" : s < 90 ? "há " + s + " s" : "há " + Math.round(s / 60) + " min");
+    el.textContent = "ao vivo · " + (s < 5 ? "agora" : s < 90 ? "há " + s + " s" : "há " + Math.round(s / 60) + " min") + " · " + clock(seloT);
   }
-  ["mapa-titulo", "reg-titulo"].forEach(function(id){
+  ["mapa-titulo", "cid-titulo-card"].forEach(function(id){
     var h = document.getElementById(id); if (!h) return;
     var el = document.createElement("span"); el.className = "selo espera"; el.setAttribute("role", "status"); h.insertAdjacentElement("afterend", el); selos.push(el); pintarSelo(el);
   });
-  if (selos.length) setInterval(function(){ selos.forEach(pintarSelo); }, 1000);
+  if (selos.length){
+    setInterval(function(){ selos.forEach(pintarSelo); }, 1000);
+    [elAutoSelo, elIntSelo].forEach(function(e){ if (e) e.addEventListener("change", function(){ selos.forEach(pintarSelo); }); });
+  }
 
   // ---- balão ao passar o mouse ou tocar num estado ----
   var dica = document.createElement("div"); dica.className = "dica"; dica.hidden = true; dica.setAttribute("role", "tooltip"); document.body.appendChild(dica);
