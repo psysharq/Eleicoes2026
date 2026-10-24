@@ -139,3 +139,8 @@ Defina a licença que preferir antes de publicar (por exemplo, MIT) e adicione u
 
 - O card de atualização automática fica na coluna da direita (telas largas) e o mapa fica centralizado.
 - O menu lateral tem os grupos **1º turno** (Presidente, Governador, Senador, Dep. federal, Dep. estadual, Mapas) e **2º turno** (Presidente, Governador, Mapas); clicar num item escolhe o turno. O botão com a seta recolhe o menu (a escolha fica salva no navegador). Também funciona por link: `index.html?t=2#aba-3`, `mapas.html?t=2`.
+
+## Comparativo 1º × 2º turno e governadores do 2º turno
+
+- `comparar.html`: Lula e Flávio hora a hora, contando a partir das 17h (Brasília), 1º turno (tracejado) contra 2º turno (linha cheia), em % dos votos válidos ou em diferença de pontos, com tabela. O TSE não publica histórico: as curvas vêm das leituras gravadas neste navegador (a página lê o 2º turno a cada 60 s enquanto estiver aberta e usa também o que o painel principal gravar). O 1º turno só tem curva se este navegador gravou em 04/10; senão, use "Importar histórico" com o arquivo do botão "Baixar histórico (JSON)" do painel. Sem curva, o resultado final do 1º turno aparece como linha de referência.
+- Governador no 2º turno (painel e mapas): a lista de estados mostra só os que não elegeram governador no 1º turno, em ordem alfabética, com o primeiro selecionado. A lista é descoberta nos arquivos do 1º turno e guardada no navegador.

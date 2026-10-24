@@ -725,6 +725,7 @@ body.com-lateral{padding-left:var(--lateral)}
     else if (e) txt = "Acompanhando o " + t + "º turno (presidente: eleição " + eleFor("1") + "; governador: " + eleFor("3") + "; senador e deputados: " + eleFor("5") + "). " +
       (e.origem === "config" ? "Códigos lidos do arquivo de configuração do TSE." : "Usando os códigos padrão: não consegui ler a configuração do TSE.");
     $("turno-info").textContent = txt;
+    if (aba === "3" || aba === "5") ajustarMajUf(true);
   }
   function ler(k){ try { var v = localStorage.getItem(CHAVE + k); return v ? JSON.parse(v) : null; } catch(e){ return null; } }
   function gravar(k, v){ try { localStorage.setItem(CHAVE + k, JSON.stringify(v)); } catch(e){} }
@@ -1312,7 +1313,7 @@ body.com-lateral{padding-left:var(--lateral)}
   function preencherUfs(){
     elUf.innerHTML = '<option value="br">Brasil</option><option value="zz">Exterior (brasileiros no exterior)</option>' + UFS.map(function(u){ return '<option value="'+u.toLowerCase()+'">'+NOMES[u]+'</option>'; }).join("");
     elMajUf.innerHTML = UFS.map(function(u){ return '<option value="'+u.toLowerCase()+'">'+NOMES[u]+'</option>'; }).join("");
-    elMajUf.value = "pe";
+    elMajUf.value = "pe"; elMajUf.dataset.lista = UFS.join(",");
     preencherDepUfs();
   }
   function preencherDepUfs(){
@@ -1353,7 +1354,9 @@ body.com-lateral{padding-left:var(--lateral)}
   function pintarMajSel(){
     var cargo = aba, uf = elMajUf.value, info = majInfo;
     $("maj-titulo").textContent = cargo === "3" ? "Governador" : "Senador";
-    $("maj-nota").textContent = cargo === "3"
+    $("maj-nota").textContent = cargo === "3" && turnoAtual() === 2
+      ? "2º turno: aparecem só os estados em que ninguém passou de 50% dos votos válidos no 1º turno. Vence o mais votado."
+      : cargo === "3"
       ? "Vence no 1º turno quem passar de 50% dos votos válidos. Senão, os dois mais votados disputam o 2º turno."
       : "Em 2026 cada estado elege dois senadores: os dois mais votados ocupam as vagas.";
     ["maj-dif","maj-cands"].forEach(function(id){ $(id).innerHTML = ""; });
@@ -1389,6 +1392,45 @@ body.com-lateral{padding-left:var(--lateral)}
       return govUm[k] || null;
     }).catch(function(){ return null; });
   }
+  // Estados com governador no 2º turno = estados cujo 1º turno não elegeu ninguém. Lê os arquivos do 1º turno (que existem),
+  // para não pedir 27 arquivos de 2º turno que não existem (rajada de 404). O resultado fica salvo neste navegador.
+  var gov2Lista = null, gov2Prom = null;
+  function chaveGov2(){ var e = elei || eleiPadrao(); return "gov2:" + elAmb.value + ":" + e.est[1]; }
+  function descobrirGov2(){
+    if (gov2Lista || cfg().demo) return Promise.resolve(gov2Lista);
+    if (gov2Prom) return gov2Prom;
+    var salvo = ler(chaveGov2()); if (salvo && salvo.length){ gov2Lista = salvo; return Promise.resolve(gov2Lista); }
+    var e = elei || eleiPadrao(), ele = e.est[1], lista = [], ok = true;
+    gov2Prom = UFS.reduce(function(fila, uf){
+      return fila.then(function(){
+        var k = uf.toLowerCase();
+        if (govUm[k]) return;
+        return baixar(cfg().base + "/" + eleCiclo() + "/" + ele + "/dados/" + k + "/" + k + "-c0003-e" + pad(ele, 6) + "-u.json").then(function(r){
+          if (r.status !== 200){ ok = false; lista.push(uf); return; }
+          var i = parse(r.dados), c = i && i.cands.filter(function(x){ return x.sit === "eleito"; })[0];
+          if (c) govUm[k] = { info:i, eleito:c }; else lista.push(uf);
+        }).catch(function(){ ok = false; lista.push(uf); }).then(function(){ return esperar(ESPACO_UF); });
+      });
+    }, Promise.resolve()).then(function(){
+      gov2Prom = null; gov2Lista = lista; if (ok) gravar(chaveGov2(), lista);
+      ajustarMajUf(true); return lista;
+    });
+    return gov2Prom;
+  }
+  // Seletor de estado do governador: no 2º turno só os estados que têm disputa, em ordem alfabética, com o primeiro marcado
+  function ajustarMajUf(recarregar){
+    var gov2 = turnoAtual() === 2 && !cfg().demo && aba === "3";
+    if (gov2 && !gov2Lista){ descobrirGov2().catch(function(){}); return; }
+    var lista = gov2 && gov2Lista && gov2Lista.length ? gov2Lista.slice().sort(function(a, b){ return NOMES[a].localeCompare(NOMES[b], "pt-BR"); }) : UFS;
+    var chave = lista.join(",");
+    if (elMajUf.dataset.lista === chave) return;
+    var antes = elMajUf.value;
+    elMajUf.dataset.lista = chave;
+    elMajUf.innerHTML = lista.map(function(u){ return '<option value="'+u.toLowerCase()+'">'+NOMES[u]+'</option>'; }).join("");
+    elMajUf.value = lista === UFS ? (UFS.indexOf(antes.toUpperCase()) >= 0 ? antes : "pe") : lista[0].toLowerCase();
+    if (recarregar && elMajUf.value !== antes){ majInfo = null; pintarMajSel(); if (majTodos[aba]) pintarMaj(); if (!ocupado) ciclo(); else repetir = true; }
+  }
+  function gov2Filtra(uf){ return !(aba === "3" && turnoAtual() === 2 && gov2Lista && gov2Lista.length && gov2Lista.indexOf(uf) < 0); }
   function textoSemSegundo(g){ return esc(g.eleito.nome) + (g.eleito.partido ? " (" + esc(g.eleito.partido) + ")" : "") + " foi eleito(a) governador(a) no 1º turno, com " + pct(g.eleito.pct) + " dos votos válidos. Este estado não tem 2º turno."; }
   function carregarMaj(){
     var cargo = aba, uf = elMajUf.value, gov2 = cargo === "3" && turnoAtual() === 2;
@@ -1424,12 +1466,13 @@ body.com-lateral{padding-left:var(--lateral)}
         if (conta) cont[c.partido] = (cont[c.partido]||0) + 1;
       });
     });
-    $("maj-sub").textContent = (com ? com + " de 27 estados lidos, " + eleitos + (cargo === "3" ? " governadores eleitos" : " senadores eleitos") + " até agora. " : "Lendo os estados… ") +
+    $("maj-sub").textContent = (com ? com + " de " + (cargo === "3" && turnoAtual() === 2 && gov2Lista && gov2Lista.length ? gov2Lista.length : 27) + " estados lidos, " + eleitos + (cargo === "3" ? " governadores eleitos" : " senadores eleitos") + " até agora. " : "Lendo os estados… ") +
       "Toque num estado para ver todos os candidatos.";
     $("maj-hemi").hidden = cargo !== "5" || !com;
     if (cargo === "5" && com) $("maj-hemi").innerHTML = '<h3 style="margin-top:0">Cadeiras em disputa por partido</h3>' + blocoHemiciclo(cont, vagas, "cadeiras com eleito ou líder") +
       '<p class="meta" style="margin:6px 0 0">Conta eleitos e, onde ainda não há definição, quem está entre os dois primeiros.</p>';
     $("maj-lista").innerHTML = UFS.filter(function(uf){
+      if (!gov2Filtra(uf)) return false;
       if (!termo) return true;
       if (norm(NOMES[uf]).indexOf(termo) >= 0 || uf === termo) return true;
       var info = dados[uf]; return info && info.cands.some(function(c){ return norm(c.nome + " " + c.completo + " " + c.numero + " " + c.partido).indexOf(termo) >= 0; });
@@ -1777,6 +1820,7 @@ body.com-lateral{padding-left:var(--lateral)}
       return fila.then(function(){
         if (aba !== cargo || (filtro && !filtro())) return;
         if (gov2 && govUm[uf.toLowerCase()]) return;                        // já eleito no 1º turno: não pede arquivo que não existe
+        if (gov2 && !gov2Filtra(uf)) return;
         return baixar(url(cargo, uf.toLowerCase())).then(function(r){
           if (r.status === 200) aoChegar(uf, parse(r.dados));
           else if (gov2 && r.status === 404) return govPrimeiroTurno(uf).then(function(){ if (aba === cargo && majTodos[cargo]) pintarMaj(); });
@@ -1859,7 +1903,7 @@ body.com-lateral{padding-left:var(--lateral)}
     $("aba-1").hidden = nova !== "1";
     $("aba-maj").hidden = !(nova === "3" || nova === "5");
     $("aba-dep").hidden = !(nova === "6" || nova === "7");
-    if (nova === "3" || nova === "5"){ $("maj-busca").value = ""; majInfo = null; pintarMajSel(); pintarMaj(); }
+    if (nova === "3" || nova === "5"){ $("maj-busca").value = ""; ajustarMajUf(); majInfo = null; pintarMajSel(); pintarMaj(); }
     if (nova === "6" || nova === "7"){ preencherDepUfs(); depInfo = null; depLimite = 20; $("dep-busca").value = ""; pintarDep(); }
     if (!ocupado) ciclo();
   }
@@ -1959,6 +2003,7 @@ body.com-lateral{padding-left:var(--lateral)}
       h += '<a href="'+href+'" data-t="'+g[0]+'" data-aba="'+c[0]+'" title="'+g[1]+': '+c[1]+'"><i></i><span class="sg" aria-hidden="true">'+c[2]+'</span><span class="rot">'+c[1]+'</span></a>';
     });
   });
+  h += '<h2>Comparar</h2><a href="comparar.html" data-pag="comparar.html" title="Comparativo 1º × 2º turno"><i></i><span class="sg" aria-hidden="true">×</span><span class="rot">1º × 2º turno</span></a>';
   h += '<h2>Extras</h2>';
   OUTROS.forEach(function(o){ h += '<a href="'+o[0]+'" data-pag="'+o[0]+'" title="'+o[1]+'"><i></i><span class="sg" aria-hidden="true">'+o[2]+'</span><span class="rot">'+o[1]+'</span></a>'; });
   h += '<div class="vs"><b class="l">Lula</b><span>×</span><b class="f">Flávio</b></div>';

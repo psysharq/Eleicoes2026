@@ -899,6 +899,49 @@ body.com-lateral{padding-left:var(--lateral)}
   $("cid-rank").addEventListener("click", function(ev){ var b = ev.target.closest("button[data-cd]"); if (b) selecionarMun(b.dataset.cd); });
   elMunSel.addEventListener("change", function(){ if (elMunSel.value) selecionarMun(elMunSel.value); });
 
+  // Governador no 2º turno: só os estados cujo 1º turno não elegeu ninguém (lidos nos arquivos do 1º turno, que existem)
+  var gov2Lista = null, gov2Prom = null;
+  function temEleito(d){
+    var ach = false;
+    (function andar(o){ if (ach || !o || typeof o !== "object") return; if (Array.isArray(o)){ o.forEach(andar); return; }
+      if (o.sqcand !== undefined && (o.e === "s" || /^eleit/i.test(o.st || ""))){ ach = true; return; }
+      Object.keys(o).forEach(function(k){ andar(o[k]); }); })(d);
+    return ach;
+  }
+  function descobrirGov2(){
+    if (gov2Lista) return Promise.resolve(gov2Lista);
+    if (gov2Prom) return gov2Prom;
+    var a = cfg(), ele = (elei && elei.est && elei.est[1]) || a.estadual, ch = "apuracao2026:gov2:" + elAmb.value + ":" + ele, lista = [], ok = true;
+    try { var sv = JSON.parse(localStorage.getItem(ch) || "null"); if (sv && sv.length){ gov2Lista = sv; return Promise.resolve(sv); } } catch(e){}
+    gov2Prom = UFS.reduce(function(fila, uf){
+      return fila.then(function(){
+        var k = uf.toLowerCase();
+        return baixar(a.base + "/" + CICLO + "/" + ele + "/dados/" + k + "/" + k + "-c0003-e" + pad(ele, 6) + "-u.json").then(function(r){
+          if (r.status !== 200){ ok = false; lista.push(uf); return; }
+          var d = typeof r.dados === "string" ? JSON.parse(r.dados) : r.dados;
+          if (!temEleito(d)) lista.push(uf);
+        }).catch(function(){ ok = false; lista.push(uf); }).then(function(){ return esperar(ESPACO_UF); });
+      });
+    }, Promise.resolve()).then(function(){
+      gov2Prom = null; gov2Lista = lista;
+      if (ok){ try { localStorage.setItem(ch, JSON.stringify(lista)); } catch(e){} }
+      return lista;
+    });
+    return gov2Prom;
+  }
+  // Seletor de estado: no governador do 2º turno, só os estados com disputa, em ordem alfabética; o primeiro vira o padrão
+  function ajustarEstG(){
+    var gov2 = cargoSel === "3" && turnoAtual() === 2 && !cfg().demo;
+    if (gov2 && !gov2Lista){ descobrirGov2().then(function(){ if (ajustarEstG() === false && selUf) selecionarUf(selUf, false); }).catch(function(){}); return false; }
+    var lista = gov2 && gov2Lista && gov2Lista.length ? gov2Lista.slice().sort(function(x, y){ return NOMES[x].localeCompare(NOMES[y], "pt-BR"); }) : UFS;
+    var chave = lista.join(",");
+    if (elEst.dataset.lista === chave) return false;
+    elEst.dataset.lista = chave;
+    elEst.innerHTML = lista.map(function(u){ return '<option value="' + u + '">' + NOMES[u] + '</option>'; }).join("");
+    if (lista !== UFS){ selecionarUf(lista[0], false); return true; }
+    if (selUf) elEst.value = selUf;
+    return false;
+  }
   function carregarGovEstado(uf){
     return baixar(url(uf.toLowerCase(), "3")).then(function(r){
       if (r.status === 404){ estadosG[uf] = { semArquivo:true }; return 404; }
@@ -959,7 +1002,7 @@ body.com-lateral{padding-left:var(--lateral)}
     avisoDemo();
     if (cargoSel === "1") popularCand();
     pintarTodosEstados();
-    if (selUf) selecionarUf(selUf, false);
+    if (!ajustarEstG() && selUf) selecionarUf(selUf, false);
   });
 
   /* ---- leitura das cidades ----
@@ -1099,7 +1142,7 @@ body.com-lateral{padding-left:var(--lateral)}
     var publicado = true;
     descobrir().catch(function(){}).then(function(){
       var tn = turnoAtual();
-      if (turnoVisto !== null && tn !== turnoVisto){ var uf = selUf; limparTudo(); if (uf) selecionarUf(uf, false); }
+      if (turnoVisto !== null && tn !== turnoVisto){ var uf = selUf; limparTudo(); if (!ajustarEstG() && uf) selecionarUf(uf, false); }
       turnoVisto = tn; pintarTurno();
       return baixar(url("br"));                                               // sonda e total do Brasil, antes dos 27 estados
     }).then(function(r){
@@ -1152,7 +1195,7 @@ body.com-lateral{padding-left:var(--lateral)}
     if (!ocupado) ciclo();
   });
   $("turno").addEventListener("change", function(){
-    turnoEsc = this.value; turnoVisto = turnoAtual(); var uf = selUf; limparTudo(); pintarTurno(); if (uf) selecionarUf(uf, false);
+    turnoEsc = this.value; turnoVisto = turnoAtual(); var uf = selUf; limparTudo(); pintarTurno(); if (!ajustarEstG() && uf) selecionarUf(uf, false);
     if (!ocupado) ciclo();
   });
   document.addEventListener("visibilitychange", function(){
@@ -1172,11 +1215,12 @@ body.com-lateral{padding-left:var(--lateral)}
   var hashIni = (location.hash || "").replace("#", "").toLowerCase().match(/^([a-z]{2})(-gov)?$/);
   if (hashIni && hashIni[2]){ cargoSel = "3"; elCargo.value = "3"; avisoDemo(); }
   paleta();
-  elEst.innerHTML = UFS.map(function(u){ return '<option value="' + u + '">' + NOMES[u] + '</option>'; }).join("");
+  elEst.innerHTML = UFS.map(function(u){ return '<option value="' + u + '">' + NOMES[u] + '</option>'; }).join(""); elEst.dataset.lista = UFS.join(",");
   montarMapaRegiao(); montarMapaEstados();
   pintarTodosEstados(); pintarRegioes(); pintarTurno();
   var inicial = hashIni ? hashIni[1].toUpperCase() : "";
   selecionarUf(UFS.indexOf(inicial) >= 0 ? inicial : "PE", false);   // Pernambuco é o padrão
+  if (cargoSel === "3") ajustarEstG();
   ciclo();
 })();
 </script>
@@ -1200,6 +1244,7 @@ body.com-lateral{padding-left:var(--lateral)}
       h += '<a href="'+href+'" data-t="'+g[0]+'" data-aba="'+c[0]+'" title="'+g[1]+': '+c[1]+'"><i></i><span class="sg" aria-hidden="true">'+c[2]+'</span><span class="rot">'+c[1]+'</span></a>';
     });
   });
+  h += '<h2>Comparar</h2><a href="comparar.html" data-pag="comparar.html" title="Comparativo 1º × 2º turno"><i></i><span class="sg" aria-hidden="true">×</span><span class="rot">1º × 2º turno</span></a>';
   h += '<h2>Extras</h2>';
   OUTROS.forEach(function(o){ h += '<a href="'+o[0]+'" data-pag="'+o[0]+'" title="'+o[1]+'"><i></i><span class="sg" aria-hidden="true">'+o[2]+'</span><span class="rot">'+o[1]+'</span></a>'; });
   h += '<div class="vs"><b class="l">Lula</b><span>×</span><b class="f">Flávio</b></div>';
