@@ -144,3 +144,16 @@ Defina a licença que preferir antes de publicar (por exemplo, MIT) e adicione u
 
 - `comparar.html`: Lula e Flávio hora a hora, contando a partir das 17h (Brasília), 1º turno (tracejado) contra 2º turno (linha cheia), em % dos votos válidos ou em diferença de pontos, com tabela. O TSE não publica histórico: as curvas vêm das leituras gravadas neste navegador (a página lê o 2º turno a cada 60 s enquanto estiver aberta e usa também o que o painel principal gravar). O 1º turno só tem curva se este navegador gravou em 04/10; senão, use "Importar histórico" com o arquivo do botão "Baixar histórico (JSON)" do painel. Sem curva, o resultado final do 1º turno aparece como linha de referência.
 - Governador no 2º turno (painel e mapas): a lista de estados mostra só os que não elegeram governador no 1º turno, em ordem alfabética, com o primeiro selecionado. A lista é descoberta nos arquivos do 1º turno e guardada no navegador.
+
+## Robô de coleta (histórico igual para todos)
+
+1. Suba para o repositório as pastas `.github/workflows`, `robo` e `dados` junto com os arquivos .html.
+2. No GitHub: Settings → Actions → General → Workflow permissions → "Read and write permissions".
+3. A partir das 16h30 de 25/10 o robô lê o presidente (Brasil) a cada 5 minutos e grava `dados/historico-6258.json`; o `comparar.html` usa esse arquivo automaticamente. Para testar na hora: aba Actions → "Coletar apuração" → Run workflow (fora da janela ele só avisa que não há nada a fazer).
+4. O GitHub pode atrasar execuções agendadas em alguns minutos; a página continua gravando as próprias leituras no navegador como reserva.
+
+## Telão, projeção e avisos
+
+- `telao.html`: placar grande, mapa por estado, projeção, botão de tela cheia e "Salvar imagem" (PNG para compartilhar). Aceita `?t=1` ou `?t=2` para fixar o turno.
+- Painel (aba Presidente, 2º turno): cartão "Projeção do 2º turno" (estimativa; "definido" só com os 27 estados com votos e vantagem acima de 1,25 vez os votos que faltam) e avisos de virada e de vitória definida (sino).
+- `comparar.html`: tabela de variação por estado, 1º → 2º turno.

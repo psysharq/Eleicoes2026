@@ -390,6 +390,21 @@ body.com-lateral{padding-left:var(--lateral)}
 }
 .mapa-grade,.grade2{grid-template-columns:minmax(0,1fr)!important}
 .mapa-wrap,.mapa-reg,.mapa-est{max-width:660px;width:100%;margin-left:auto;margin-right:auto}
+
+/* projeção */
+.proj-status{margin:10px 0 8px;font-size:1.1rem}
+.proj-status.def b{color:var(--neon);text-shadow:0 0 10px rgba(57,255,20,.5)}
+.proj-barra{display:flex;height:44px;border-radius:8px;overflow:hidden;font-weight:600}
+.proj-barra span{display:flex;align-items:center;gap:8px;padding:0 12px;color:#fff;min-width:0;white-space:nowrap;overflow:hidden}
+.proj-barra .p-lula{background:var(--lula)} .proj-barra .p-flavio{background:var(--flavio);justify-content:flex-end}
+.proj-barra b{font-size:1.5rem;line-height:1}
+
+.lateral .vs.mini-ativo{display:block}
+.lateral .vs .mini{display:flex;justify-content:space-between;gap:8px;width:100%;font-size:.9rem}
+.lateral .vs .mini-barra{display:flex;height:8px;width:100%;border-radius:4px;overflow:hidden;margin:6px 0 4px;background:var(--vazio)}
+.lateral .vs .mini-barra i:first-child{background:var(--lula)} .lateral .vs .mini-barra i:last-child{background:var(--flavio)}
+.lateral .vs small{width:100%}
+.lateral .vs{flex-direction:row}
 </style><!--/TEMA-->
 </head>
 <body>
@@ -482,6 +497,11 @@ body.com-lateral{padding-left:var(--lateral)}
   </nav>
 
   <div class="painel-aba" id="aba-1" role="tabpanel">
+    <section class="cartao" id="proj" aria-labelledby="proj-t" hidden>
+      <h2 id="proj-t">Projeção do 2º turno</h2>
+      <p class="meta" id="proj-sub" style="margin:2px 0 0"></p>
+      <div id="proj-corpo"></div>
+    </section>
     <section class="cartao" aria-labelledby="mapa-titulo">
       <h2 id="mapa-titulo">Presidente: quem lidera em cada estado</h2>
       <p class="meta" id="mapa-sub" style="margin:2px 0 0">Toque num estado para ver o resultado dele.</p>
@@ -726,6 +746,7 @@ body.com-lateral{padding-left:var(--lateral)}
       (e.origem === "config" ? "Códigos lidos do arquivo de configuração do TSE." : "Usando os códigos padrão: não consegui ler a configuração do TSE.");
     $("turno-info").textContent = txt;
     if (aba === "3" || aba === "5") ajustarMajUf(true);
+    pintarProjecao();
   }
   function ler(k){ try { var v = localStorage.getItem(CHAVE + k); return v ? JSON.parse(v) : null; } catch(e){ return null; } }
   function gravar(k, v){ try { localStorage.setItem(CHAVE + k, JSON.stringify(v)); } catch(e){} }
@@ -1254,6 +1275,35 @@ body.com-lateral{padding-left:var(--lateral)}
     if (selUf) $("uf-"+selUf).classList.remove("sel");
     selUf = uf; var el = $("uf-"+uf); el.classList.add("sel"); el.parentNode.insertBefore(el, $("tx-AC"));
     pintarDetalheUf();
+  }
+  // Projeção do 2º turno: supõe que as seções que faltam votam como as já apuradas em cada estado. É estimativa.
+  // "Definido" só quando os 27 estados têm votos e a vantagem atual supera 1,25 vez os votos que ainda faltam.
+  var liderAnt = null, definidoAviso = null;
+  function pintarProjecao(){
+    var el = $("proj"); if (!el) return;
+    if (turnoAtual() !== 2){ el.hidden = true; return; }
+    el.hidden = false;
+    var L = 0, F = 0, Lp = 0, Fp = 0, rest = 0, com = 0;
+    UFS.forEach(function(uf){
+      var i = estados[uf]; if (!i || !(i.pst > 0)) return;
+      var l = 0, f = 0; i.cands.forEach(function(c){ var s = lado(c.nome); if (s === "lula") l += c.votos || 0; else if (s === "flavio") f += c.votos || 0; });
+      if (!(l + f > 0)) return;
+      var fr = Math.min(1, i.pst / 100); com++; L += l; F += f; Lp += l / fr; Fp += f / fr; rest += (l + f) * (1 / fr - 1);
+    });
+    if (!com){ $("proj-sub").textContent = "Estimativa a partir dos estados já apurados."; $("proj-corpo").innerHTML = '<p class="meta">Aguardando os primeiros votos do 2º turno.</p>'; return; }
+    var tot = Lp + Fp, pL = Lp / tot * 100, pF = Fp / tot * 100, margem = Math.abs(L - F), lid = L >= F ? "Lula" : "Flávio";
+    var definido = com === 27 && margem > rest * 1.25;
+    if (L !== F){
+      if (liderAnt && liderAnt !== lid) alertar("Virada na apuração do 2º turno: " + lid + " passou à frente.");
+      liderAnt = lid;
+    }
+    if (definido && definidoAviso !== lid){ definidoAviso = lid; alertar("Vitória de " + lid + " matematicamente definida (projeção)."); }
+    var nv = function(x){ return Math.round(x).toLocaleString("pt-BR"); };
+    $("proj-sub").textContent = "Estimativa: supõe que as seções que faltam votam como as já apuradas em cada estado. Não é resultado oficial.";
+    $("proj-corpo").innerHTML =
+      '<p class="proj-status ' + (definido ? "def" : "") + '"><b>' + (definido ? "Resultado definido: " + lid + " vence." : lid + " na frente, resultado em aberto.") + '</b></p>' +
+      '<div class="proj-barra" role="img" aria-label="Projeção: Lula ' + pct(pL) + ', Flávio ' + pct(pF) + '"><span class="p-lula" style="flex:' + pL.toFixed(2) + '"><b class="num">' + pct(pL) + '</b> Lula</span><span class="p-flavio" style="flex:' + pF.toFixed(2) + '"><b class="num">' + pct(pF) + '</b> Flávio</span></div>' +
+      '<p class="meta" style="margin:8px 0 0">Vantagem atual de ' + lid + ': ' + nv(margem) + ' votos. Faltam cerca de ' + nv(rest) + ' votos válidos' + (com < 27 ? " (" + (27 - com) + " estado" + (27 - com === 1 ? "" : "s") + " ainda sem votos)" : "") + '.</p>';
   }
   function pintarResumoMapa(){
     var nl = 0, nf = 0, com = 0;
@@ -1841,7 +1891,7 @@ body.com-lateral{padding-left:var(--lateral)}
           .then(function(){ return baixar(url("1","br")); })      // sonda antes dos 27 arquivos: rajadas de 404 bloqueiam o IP
           .then(function(r){
             publicado = r.status !== 404;
-            if (publicado) return lerEstados("1", function(uf, info){ estados[uf] = info; pintarUf(uf); pintarResumoMapa(); if (uf === selUf) pintarDetalheUf(); })
+            if (publicado) return lerEstados("1", function(uf, info){ estados[uf] = info; pintarUf(uf); pintarResumoMapa(); pintarProjecao(); if (uf === selUf) pintarDetalheUf(); })
               .then(function(){ return baixar(url("1","zz")); })     // brasileiros no exterior
               .then(function(z){ if (z.status === 200){ exterior = parse(z.dados); pintarResumoMapa(); } })
               .catch(function(){});                                   // o exterior é auxiliar: se falhar, tenta de novo no próximo ciclo
@@ -1926,7 +1976,7 @@ body.com-lateral{padding-left:var(--lateral)}
   function limparTudo(){
     estados = {}; maj = {"3":{}, "5":{}}; depInfo = null; depBR = {}; favDados = {}; sitAnterior = {}; tlEstado = null; tlDemo = null;
     majInfo = null; majTodos = {"3":false,"5":false}; depBRAtivo = false; exterior = null; cacheCiclo = {};
-    UFS.forEach(pintarUf); pintarResumoMapa(); if (selUf) pintarDetalheUf(); if (aba === "3" || aba === "5"){ pintarMajSel(); pintarMaj(); } pintarDep(); pintarFavs();
+    UFS.forEach(pintarUf); pintarResumoMapa(); pintarProjecao(); if (selUf) pintarDetalheUf(); if (aba === "3" || aba === "5"){ pintarMajSel(); pintarMaj(); } pintarDep(); pintarFavs();
     limparPres(); carregarMunicipios(); tlDesenhar();
   }
   elAmb.addEventListener("change", function(){
@@ -1992,7 +2042,7 @@ body.com-lateral{padding-left:var(--lateral)}
     ["1","1º turno",[["1","Presidente","P"],["3","Governador","G"],["5","Senador","S"],["6","Dep. federal","DF"],["7","Dep. estadual","DE"],["m","Mapas","M"]]],
     ["2","2º turno",[["1","Presidente","P"],["3","Governador","G"],["m","Mapas","M"]]]
   ];
-  var OUTROS = [["secao.html","Ficha da seção","F"],["coletor-tse.html","Coletor TSE","C"]];
+  var OUTROS = [["telao.html","Telão","T"],["secao.html","Ficha da seção","F"],["coletor-tse.html","Coletor TSE","C"]];
   var qt = /[?&]t=([12])/.exec(location.search), tUrl = qt ? qt[1] : null;
   var h = '<div class="cab"><a class="marca" href="index.html">Apuração 2026<small>Resultados do TSE</small></a>' +
     '<button type="button" class="recolher" id="recolher" aria-label="Recolher menu" aria-expanded="true" title="Recolher menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button></div>';
@@ -2006,7 +2056,7 @@ body.com-lateral{padding-left:var(--lateral)}
   h += '<h2>Comparar</h2><a href="comparar.html" data-pag="comparar.html" title="Comparativo 1º × 2º turno"><i></i><span class="sg" aria-hidden="true">×</span><span class="rot">1º × 2º turno</span></a>';
   h += '<h2>Extras</h2>';
   OUTROS.forEach(function(o){ h += '<a href="'+o[0]+'" data-pag="'+o[0]+'" title="'+o[1]+'"><i></i><span class="sg" aria-hidden="true">'+o[2]+'</span><span class="rot">'+o[1]+'</span></a>'; });
-  h += '<div class="vs"><b class="l">Lula</b><span>×</span><b class="f">Flávio</b></div>';
+  h += '<div class="vs" id="vs"><b class="l">Lula</b><span>×</span><b class="f">Flávio</b></div>';
   var nav = document.createElement("nav"); nav.className = "lateral"; nav.id = "lateral"; nav.setAttribute("aria-label","Menu principal"); nav.innerHTML = h;
   var topo = document.createElement("div"); topo.className = "barra-topo";
   topo.innerHTML = '<button type="button" id="abrir-menu" aria-label="Abrir menu" aria-expanded="false" aria-controls="lateral"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button><span>Apuração 2026</span>';
@@ -2056,6 +2106,27 @@ body.com-lateral{padding-left:var(--lateral)}
   }
   marcar();
   nav.addEventListener("click", function(ev){ if (ev.target.closest("a") && !ev.defaultPrevented) menu(false); });
+  // mini placar ao vivo no rodapé do menu (presidente, Brasil)
+  (function(){
+    var vs = nav.querySelector("#vs"); if (!vs) return;
+    var ele = Date.now() >= Date.UTC(2026, 9, 25, 15, 0, 0) ? 6258 : 6257;
+    function n(x){ var t = String(x == null ? "" : x), v = t.indexOf(",") >= 0 ? parseFloat(t.replace(/\./g, "").replace(",", ".")) : parseFloat(t); return isNaN(v) ? 0 : v; }
+    function ler(){
+      if (document.hidden) return;
+      fetch("https://resultados.tse.jus.br/oficial/ele2026/" + ele + "/dados/br/br-c0001-e" + ("000000" + ele).slice(-6) + "-u.json", { cache:"no-cache" })
+        .then(function(r){ return r.status === 200 ? r.json() : null; }).then(function(d){
+          if (!d) return; var tot = 0, L = 0, F = 0;
+          (function a(o){ if (!o || typeof o !== "object") return; if (Array.isArray(o)){ o.forEach(a); return; }
+            if (o.vap !== undefined && o.sqcand !== undefined){ var v = n(o.vap), nm = o.nmu || o.nm || ""; tot += v; if (/lula/i.test(nm)) L = v; else if (/fl[aá]vio/i.test(nm)) F = v; return; }
+            Object.keys(o).forEach(function(k){ a(o[k]); }); })(d);
+          if (!(tot > 0)) return;
+          var pl = L / tot * 100, pf = F / tot * 100, f = function(x){ return x.toLocaleString("pt-BR", { minimumFractionDigits:1, maximumFractionDigits:1 }); };
+          vs.innerHTML = '<div class="mini"><b class="l">Lula ' + f(pl) + '%</b><b class="f">' + f(pf) + '% Flávio</b></div><div class="mini-barra" aria-hidden="true"><i style="flex:' + pl.toFixed(2) + '"></i><i style="flex:' + pf.toFixed(2) + '"></i></div><small>' + (turnoTxt()) + ', ' + f(n(d.s && d.s.pst)) + '% apurado</small>';
+        }).catch(function(){});
+    }
+    function turnoTxt(){ return ele === 6258 ? "2º turno" : "1º turno"; }
+    ler(); setInterval(ler, 60000);
+  })();
   // recolher / expandir (guarda a escolha neste navegador)
   var bt = nav.querySelector("#recolher");
   function recolher(r){ document.body.classList.toggle("lateral-recolhida", r); bt.setAttribute("aria-expanded", String(!r)); bt.setAttribute("aria-label", r ? "Expandir menu" : "Recolher menu"); bt.title = bt.getAttribute("aria-label"); try{ localStorage.setItem("menu-recolhido", r ? "1" : "0"); }catch(e){} }

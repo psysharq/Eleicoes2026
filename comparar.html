@@ -40,6 +40,12 @@ th.grupo{text-align:center;border-bottom:1px solid var(--linha)}
 td.l{color:var(--lula);font-weight:600} td.f{color:var(--flavio);font-weight:600}
 .dif-pos{color:var(--lula)} .dif-neg{color:var(--flavio)}
 .botoes{display:flex;flex-wrap:wrap;gap:8px}
+.vbc{min-width:200px;text-align:left!important}
+.vb{display:inline-block;position:relative;width:120px;height:10px;vertical-align:middle;background:var(--vazio);border-radius:5px;margin-right:8px}
+.vb::after{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--apagado)}
+.vb i{position:absolute;top:0;bottom:0;border-radius:5px}
+.vb i.pos{background:var(--lula)} .vb i.neg{background:var(--flavio)}
+small{font-weight:400}
 :focus-visible{outline:3px solid var(--confirma);outline-offset:2px}
 </style>
 <!--TEMA--><style>
@@ -149,6 +155,21 @@ body.com-lateral{padding-left:var(--lateral)}
 }
 .mapa-grade,.grade2{grid-template-columns:minmax(0,1fr)!important}
 .mapa-wrap,.mapa-reg,.mapa-est{max-width:660px;width:100%;margin-left:auto;margin-right:auto}
+
+/* projeção */
+.proj-status{margin:10px 0 8px;font-size:1.1rem}
+.proj-status.def b{color:var(--neon);text-shadow:0 0 10px rgba(57,255,20,.5)}
+.proj-barra{display:flex;height:44px;border-radius:8px;overflow:hidden;font-weight:600}
+.proj-barra span{display:flex;align-items:center;gap:8px;padding:0 12px;color:#fff;min-width:0;white-space:nowrap;overflow:hidden}
+.proj-barra .p-lula{background:var(--lula)} .proj-barra .p-flavio{background:var(--flavio);justify-content:flex-end}
+.proj-barra b{font-size:1.5rem;line-height:1}
+
+.lateral .vs.mini-ativo{display:block}
+.lateral .vs .mini{display:flex;justify-content:space-between;gap:8px;width:100%;font-size:.9rem}
+.lateral .vs .mini-barra{display:flex;height:8px;width:100%;border-radius:4px;overflow:hidden;margin:6px 0 4px;background:var(--vazio)}
+.lateral .vs .mini-barra i:first-child{background:var(--lula)} .lateral .vs .mini-barra i:last-child{background:var(--flavio)}
+.lateral .vs small{width:100%}
+.lateral .vs{flex-direction:row}
 </style><!--/TEMA-->
 </head>
 <body>
@@ -179,9 +200,23 @@ body.com-lateral{padding-left:var(--lateral)}
     <div class="rolagem" id="tabela"></div>
   </section>
 
+  <section class="cartao" id="cartao-uf" aria-labelledby="t-uf">
+    <h2 id="t-uf">Variação por estado, 1º turno → 2º turno</h2>
+    <p class="meta" id="uf-sub" style="margin:4px 0 0">Margem = Lula − Flávio, em pontos percentuais dos votos válidos. A barra mostra quanto a margem mudou do 1º para o 2º turno: para a direita, favorece Lula; para a esquerda, Flávio. O 1º turno tem vários candidatos, então a comparação é aproximada.</p>
+    <div class="controles">
+      <select id="uf-ordem" aria-label="Ordenar estados">
+        <option value="var-l">Maior ganho de Lula</option>
+        <option value="var-f">Maior ganho de Flávio</option>
+        <option value="nome">Ordem alfabética</option>
+        <option value="marg2">Margem no 2º turno</option>
+      </select>
+    </div>
+    <div class="rolagem" id="uf-tab"></div>
+  </section>
+
   <section class="cartao" aria-labelledby="t-hist">
     <h2 id="t-hist">De onde vêm os números</h2>
-    <p class="meta" id="nota" style="margin:6px 0 0">O TSE não publica o histórico da apuração. Esta página guarda as leituras que o painel e ela própria fazem neste navegador. A curva do 1º turno só existe se este navegador gravou na noite de 04/10 (com o painel principal aberto); se não, importe o arquivo de histórico do 1º turno (botão abaixo) e use o resultado final do 1º turno como referência.</p>
+    <p class="meta" id="nota" style="margin:6px 0 0">O TSE não publica o histórico da apuração. Se o robô de coleta estiver ligado (pasta <code>robo</code>), o histórico vem do arquivo <code>dados/historico-6258.json</code>, com uma leitura a cada 5 minutos, igual para todo mundo. Sem ele, esta página guarda as leituras que o painel e ela própria fazem neste navegador. A curva do 1º turno só existe se este navegador gravou na noite de 04/10 (com o painel principal aberto); se não, importe o arquivo de histórico do 1º turno (botão abaixo) e use o resultado final do 1º turno como referência.</p>
     <div class="controles">
       <button type="button" id="baixar">Baixar histórico (JSON)</button>
       <label class="btn" for="importar">Importar histórico (JSON)</label>
@@ -209,8 +244,18 @@ body.com-lateral{padding-left:var(--lateral)}
   function hhmm(t){ return new Date(t).toLocaleTimeString("pt-BR", { hour:"2-digit", minute:"2-digit", timeZone:"America/Sao_Paulo" }); }
 
   // Série de uma eleição: [{t, ap, L, F}] com Lula e Flávio em % dos votos válidos
+  var BOT = {};                                                        // histórico do robô (dados/historico-<eleição>.json), se existir
+  function melhor(chave){
+    var a = ler(chave), b = BOT[chave], na = a && a.pts ? a.pts.length : 0, nb = b && b.pts ? b.pts.length : 0;
+    return nb > na ? b : a;
+  }
+  function carregarBot(){
+    return Promise.all([[K1, E1], [K2, E2]].map(function(x){
+      return fetch("dados/historico-" + x[1] + ".json?x=" + Date.now(), { cache:"no-cache" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(j){ if (j && j.pts && j.nomes) BOT[x[0]] = j; }).catch(function(){});
+    }));
+  }
   function serie(chave){
-    var o = ler(chave); if (!o || !o.pts || !o.nomes) return [];
+    var o = melhor(chave); if (!o || !o.pts || !o.nomes) return [];
     var iL = -1, iF = -1;
     o.nomes.forEach(function(n, i){ if (iL < 0 && /lula/i.test(n)) iL = i; if (iF < 0 && /fl[aá]vio/i.test(n)) iF = i; });
     if (iL < 0 || iF < 0) return [];
@@ -344,6 +389,7 @@ body.com-lateral{padding-left:var(--lateral)}
     var tarefas = [];
     if (!finalT1) tarefas.push(pedir(E1).then(function(d){ if (d) final1(d); }).catch(function(){}));
     tarefas.push(pedir(E2).then(function(d){ ultimaLeitura = Date.now(); leituraErro = ""; if (d) registrar2(d); }).catch(function(){ leituraErro = "Não consegui consultar o TSE agora; mostrando o que está gravado."; }));
+    tarefas.push(carregarBot());
     return Promise.all(tarefas).then(function(){ desenhar(); sub(); });
   }
 
@@ -388,8 +434,48 @@ body.com-lateral{padding-left:var(--lateral)}
     fr.readAsText(arq); this.value = "";
   });
 
-  desenhar(); sub(); ciclo();
-  setInterval(function(){ if (!document.hidden) ciclo(); }, INTERVALO);
+  var UFS = ["AC","AL","AM","AP","BA","CE","DF","ES","GO","MA","MG","MS","MT","PA","PB","PE","PI","PR","RJ","RN","RO","RR","RS","SC","SE","SP","TO"];
+  var NOMES = {AC:"Acre",AL:"Alagoas",AM:"Amazonas",AP:"Amapá",BA:"Bahia",CE:"Ceará",DF:"Distrito Federal",ES:"Espírito Santo",GO:"Goiás",MA:"Maranhão",MG:"Minas Gerais",MS:"Mato Grosso do Sul",MT:"Mato Grosso",PA:"Pará",PB:"Paraíba",PE:"Pernambuco",PI:"Piauí",PR:"Paraná",RJ:"Rio de Janeiro",RN:"Rio Grande do Norte",RO:"Rondônia",RR:"Roraima",RS:"Rio Grande do Sul",SC:"Santa Catarina",SE:"Sergipe",SP:"São Paulo",TO:"Tocantins"};
+  var ST = { 1:{}, 2:{} }, stAtual = 0;
+  function pedirUf(ele, uf){ var k = uf.toLowerCase(); return fetch(BASE + "/" + CICLO + "/" + ele + "/dados/" + k + "/" + k + "-c0001-e" + ("000000" + ele).slice(-6) + "-u.json", { cache:"no-cache" }).then(function(r){ return r.status === 200 ? r.json() : null; }); }
+  function resumoUf(d){
+    var cs = cands(d), tot = 0, L = 0, F = 0;
+    cs.forEach(function(c){ var v = valor(c.vap), n = c.nmu || c.nm; tot += v; if (/lula/i.test(n)) L = v; if (/fl[aá]vio/i.test(n)) F = v; });
+    return tot > 0 ? { L:L / tot * 100, F:F / tot * 100, pst:valor(d.s && d.s.pst) } : null;
+  }
+  function tabelaUf(){
+    var ord = $("uf-ordem").value, lin = UFS.map(function(u){
+      var a = ST[1][u], b = ST[2][u], m1 = a ? a.L - a.F : null, m2 = b ? b.L - b.F : null;
+      return { u:u, a:a, b:b, m1:m1, m2:m2, v:(m1 !== null && m2 !== null) ? m2 - m1 : null };
+    });
+    var vs = lin.filter(function(x){ return x.v !== null; }).map(function(x){ return Math.abs(x.v); }), max = Math.max(5, vs.length ? Math.max.apply(null, vs) : 5);
+    lin.sort(function(x, y){
+      if (ord === "nome") return NOMES[x.u].localeCompare(NOMES[y.u], "pt-BR");
+      var kx = ord === "marg2" ? x.m2 : x.v, ky = ord === "marg2" ? y.m2 : y.v;
+      if (kx === null) return 1; if (ky === null) return -1;
+      return ord === "var-f" ? kx - ky : ky - kx;
+    });
+    $("uf-tab").innerHTML = '<table><thead><tr><th>Estado</th><th>1º turno<br><small>margem</small></th><th>2º turno<br><small>margem</small></th><th>Apurado</th><th>Mudança da margem</th></tr></thead><tbody>' + lin.map(function(x){
+      var barra = x.v === null ? "–" : '<span class="vb"><i class="' + (x.v >= 0 ? "pos" : "neg") + '" style="width:' + Math.min(50, Math.abs(x.v) / max * 50).toFixed(1) + '%;' + (x.v >= 0 ? "left:50%" : "right:50%") + '"></i></span> <span class="num ' + (x.v >= 0 ? "dif-pos" : "dif-neg") + '">' + fd(x.v) + '</span>';
+      return '<tr><td>' + esc(NOMES[x.u]) + '</td><td class="num">' + (x.m1 === null ? "–" : fd(x.m1)) + '</td><td class="num">' + (x.m2 === null ? "–" : fd(x.m2)) + '</td><td class="num">' + (x.b ? f1(x.b.pst) + "%" : "–") + '</td><td class="vbc">' + barra + '</td></tr>';
+    }).join("") + '</tbody></table>';
+  }
+  function lerUfs(){
+    var agora = Date.now(); if (agora - stAtual < 300000) return Promise.resolve(); stAtual = agora;      // 27 arquivos por turno: só a cada 5 minutos
+    var fila = [];
+    UFS.forEach(function(u){
+      if (!ST[1][u]) fila.push([1, E1, u]);
+      fila.push([2, E2, u]);
+    });
+    return fila.reduce(function(p, x){
+      return p.then(function(){ return pedirUf(x[1], x[2]).then(function(d){ var r = d ? resumoUf(d) : null; if (r) ST[x[0]][x[2]] = r; }).catch(function(){}).then(function(){ return new Promise(function(ok){ setTimeout(ok, 120); }); }); });
+    }, Promise.resolve()).then(function(){ try { localStorage.setItem(PFX + "st1:" + E1, JSON.stringify(ST[1])); } catch(e){} tabelaUf(); });
+  }
+  $("uf-ordem").addEventListener("change", tabelaUf);
+  try { var s1 = JSON.parse(localStorage.getItem(PFX + "st1:" + E1) || "null"); if (s1 && Object.keys(s1).length > 20) ST[1] = s1; } catch(e){}
+  tabelaUf();
+  desenhar(); sub(); ciclo().then(lerUfs);
+  setInterval(function(){ if (!document.hidden) ciclo().then(lerUfs); }, INTERVALO);
 })();
 </script>
 <!--TEMA--><script>
@@ -401,7 +487,7 @@ body.com-lateral{padding-left:var(--lateral)}
     ["1","1º turno",[["1","Presidente","P"],["3","Governador","G"],["5","Senador","S"],["6","Dep. federal","DF"],["7","Dep. estadual","DE"],["m","Mapas","M"]]],
     ["2","2º turno",[["1","Presidente","P"],["3","Governador","G"],["m","Mapas","M"]]]
   ];
-  var OUTROS = [["secao.html","Ficha da seção","F"],["coletor-tse.html","Coletor TSE","C"]];
+  var OUTROS = [["telao.html","Telão","T"],["secao.html","Ficha da seção","F"],["coletor-tse.html","Coletor TSE","C"]];
   var qt = /[?&]t=([12])/.exec(location.search), tUrl = qt ? qt[1] : null;
   var h = '<div class="cab"><a class="marca" href="index.html">Apuração 2026<small>Resultados do TSE</small></a>' +
     '<button type="button" class="recolher" id="recolher" aria-label="Recolher menu" aria-expanded="true" title="Recolher menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button></div>';
@@ -415,7 +501,7 @@ body.com-lateral{padding-left:var(--lateral)}
   h += '<h2>Comparar</h2><a href="comparar.html" data-pag="comparar.html" title="Comparativo 1º × 2º turno"><i></i><span class="sg" aria-hidden="true">×</span><span class="rot">1º × 2º turno</span></a>';
   h += '<h2>Extras</h2>';
   OUTROS.forEach(function(o){ h += '<a href="'+o[0]+'" data-pag="'+o[0]+'" title="'+o[1]+'"><i></i><span class="sg" aria-hidden="true">'+o[2]+'</span><span class="rot">'+o[1]+'</span></a>'; });
-  h += '<div class="vs"><b class="l">Lula</b><span>×</span><b class="f">Flávio</b></div>';
+  h += '<div class="vs" id="vs"><b class="l">Lula</b><span>×</span><b class="f">Flávio</b></div>';
   var nav = document.createElement("nav"); nav.className = "lateral"; nav.id = "lateral"; nav.setAttribute("aria-label","Menu principal"); nav.innerHTML = h;
   var topo = document.createElement("div"); topo.className = "barra-topo";
   topo.innerHTML = '<button type="button" id="abrir-menu" aria-label="Abrir menu" aria-expanded="false" aria-controls="lateral"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button><span>Apuração 2026</span>';
@@ -465,6 +551,27 @@ body.com-lateral{padding-left:var(--lateral)}
   }
   marcar();
   nav.addEventListener("click", function(ev){ if (ev.target.closest("a") && !ev.defaultPrevented) menu(false); });
+  // mini placar ao vivo no rodapé do menu (presidente, Brasil)
+  (function(){
+    var vs = nav.querySelector("#vs"); if (!vs) return;
+    var ele = Date.now() >= Date.UTC(2026, 9, 25, 15, 0, 0) ? 6258 : 6257;
+    function n(x){ var t = String(x == null ? "" : x), v = t.indexOf(",") >= 0 ? parseFloat(t.replace(/\./g, "").replace(",", ".")) : parseFloat(t); return isNaN(v) ? 0 : v; }
+    function ler(){
+      if (document.hidden) return;
+      fetch("https://resultados.tse.jus.br/oficial/ele2026/" + ele + "/dados/br/br-c0001-e" + ("000000" + ele).slice(-6) + "-u.json", { cache:"no-cache" })
+        .then(function(r){ return r.status === 200 ? r.json() : null; }).then(function(d){
+          if (!d) return; var tot = 0, L = 0, F = 0;
+          (function a(o){ if (!o || typeof o !== "object") return; if (Array.isArray(o)){ o.forEach(a); return; }
+            if (o.vap !== undefined && o.sqcand !== undefined){ var v = n(o.vap), nm = o.nmu || o.nm || ""; tot += v; if (/lula/i.test(nm)) L = v; else if (/fl[aá]vio/i.test(nm)) F = v; return; }
+            Object.keys(o).forEach(function(k){ a(o[k]); }); })(d);
+          if (!(tot > 0)) return;
+          var pl = L / tot * 100, pf = F / tot * 100, f = function(x){ return x.toLocaleString("pt-BR", { minimumFractionDigits:1, maximumFractionDigits:1 }); };
+          vs.innerHTML = '<div class="mini"><b class="l">Lula ' + f(pl) + '%</b><b class="f">' + f(pf) + '% Flávio</b></div><div class="mini-barra" aria-hidden="true"><i style="flex:' + pl.toFixed(2) + '"></i><i style="flex:' + pf.toFixed(2) + '"></i></div><small>' + (turnoTxt()) + ', ' + f(n(d.s && d.s.pst)) + '% apurado</small>';
+        }).catch(function(){});
+    }
+    function turnoTxt(){ return ele === 6258 ? "2º turno" : "1º turno"; }
+    ler(); setInterval(ler, 60000);
+  })();
   // recolher / expandir (guarda a escolha neste navegador)
   var bt = nav.querySelector("#recolher");
   function recolher(r){ document.body.classList.toggle("lateral-recolhida", r); bt.setAttribute("aria-expanded", String(!r)); bt.setAttribute("aria-label", r ? "Expandir menu" : "Recolher menu"); bt.title = bt.getAttribute("aria-label"); try{ localStorage.setItem("menu-recolhido", r ? "1" : "0"); }catch(e){} }
