@@ -213,6 +213,40 @@ body.com-lateral{padding-left:var(--lateral)}
   .abas{top:calc(56px + env(safe-area-inset-top,0px))!important}
 }
 @media (prefers-reduced-motion:reduce){.lateral{transition:none}}
+
+/* ---- menu: grupos, siglas e recolher ---- */
+.lateral .cab{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.lateral .recolher{min-height:36px;min-width:36px;padding:0;display:grid;place-items:center;background:transparent;border-color:rgba(57,255,20,.35);flex:none}
+.lateral .recolher svg{width:18px;height:18px;stroke:var(--neon);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s}
+.lateral a .sg{display:none;font:700 .85rem "Barlow Condensed",system-ui,sans-serif}
+.lateral h2.g1{color:var(--neon);opacity:.85}
+.lateral h2.g2{color:var(--neon);opacity:.85}
+@media (min-width:900px){
+  body.lateral-recolhida{--lateral:68px}
+  body.lateral-recolhida .lateral{padding-left:8px;padding-right:8px;align-items:stretch}
+  body.lateral-recolhida .lateral .marca,
+  body.lateral-recolhida .lateral .vs{display:none}
+  body.lateral-recolhida .lateral .cab{justify-content:center}
+  body.lateral-recolhida .lateral .recolher svg{transform:rotate(180deg)}
+  body.lateral-recolhida .lateral h2{font-size:.66rem;text-align:center;margin:12px 0 2px;letter-spacing:.04em}
+  body.lateral-recolhida .lateral a{justify-content:center;padding:8px 0}
+  body.lateral-recolhida .lateral a .rot,
+  body.lateral-recolhida .lateral a i{display:none}
+  body.lateral-recolhida .lateral a .sg{display:inline}
+}
+@media (max-width:899px){.lateral .recolher{display:none}}
+
+/* ---- página: card de atualização à direita, mapa centralizado ---- */
+@media (min-width:1180px){
+  main{max-width:1380px!important;grid-template-columns:minmax(0,1fr) 330px!important;column-gap:18px;align-items:start}
+  main>*{grid-column:1}
+  main>#status{grid-column:2;grid-row:1 / span 40;position:sticky;top:16px;align-self:start}
+  main>#status .status-topo{flex-wrap:wrap}
+  main>#status .contagem{font-size:2rem}
+  main>#status .controles select{flex:1 1 100%;max-width:100%}
+}
+.mapa-grade,.grade2{grid-template-columns:minmax(0,1fr)!important}
+.mapa-wrap,.mapa-reg,.mapa-est{max-width:660px;width:100%;margin-left:auto;margin-right:auto}
 </style><!--/TEMA-->
 </head>
 <body>
@@ -1151,13 +1185,24 @@ body.com-lateral{padding-left:var(--lateral)}
   var pag = (location.pathname.split("/").pop() || "index.html").toLowerCase();
   if (pag === "apuracao-2026.html") pag = "index.html";
   var noIndex = pag === "index.html";
-  var CARGOS = [["1","Presidente"],["3","Governador"],["5","Senador"],["6","Dep. federal"],["7","Dep. estadual"]];
-  var OUTROS = [["mapas.html","Mapas"],["secao.html","Ficha da seção"],["coletor-tse.html","Coletor TSE"]];
-  var h = '<a class="marca" href="index.html">Apuração 2026<small>Resultados do TSE</small></a><h2>Painel</h2>';
-  CARGOS.forEach(function(c){ h += '<a href="index.html#aba-'+c[0]+'" data-aba="'+c[0]+'"><i></i>'+c[1]+'</a>'; });
-  h += '<h2>Ferramentas</h2>';
-  OUTROS.forEach(function(o){ h += '<a href="'+o[0]+'"'+(pag === o[0] ? ' aria-current="page"' : '')+'><i></i>'+o[1]+'</a>'; });
-  h += '<div class="vs"><b class="l">Lula</b><span>×</span><b class="f">Flávio</b><span>Presidente</span></div>';
+  var G = [
+    ["1","1º turno",[["1","Presidente","P"],["3","Governador","G"],["5","Senador","S"],["6","Dep. federal","DF"],["7","Dep. estadual","DE"],["m","Mapas","M"]]],
+    ["2","2º turno",[["1","Presidente","P"],["3","Governador","G"],["m","Mapas","M"]]]
+  ];
+  var OUTROS = [["secao.html","Ficha da seção","F"],["coletor-tse.html","Coletor TSE","C"]];
+  var qt = /[?&]t=([12])/.exec(location.search), tUrl = qt ? qt[1] : null;
+  var h = '<div class="cab"><a class="marca" href="index.html">Apuração 2026<small>Resultados do TSE</small></a>' +
+    '<button type="button" class="recolher" id="recolher" aria-label="Recolher menu" aria-expanded="true" title="Recolher menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button></div>';
+  G.forEach(function(g){
+    h += '<h2 class="g'+g[0]+'">'+g[1]+'</h2>';
+    g[2].forEach(function(c){
+      var href = c[0] === "m" ? "mapas.html?t="+g[0] : "index.html?t="+g[0]+"#aba-"+c[0];
+      h += '<a href="'+href+'" data-t="'+g[0]+'" data-aba="'+c[0]+'" title="'+g[1]+': '+c[1]+'"><i></i><span class="sg" aria-hidden="true">'+c[2]+'</span><span class="rot">'+c[1]+'</span></a>';
+    });
+  });
+  h += '<h2>Extras</h2>';
+  OUTROS.forEach(function(o){ h += '<a href="'+o[0]+'" data-pag="'+o[0]+'" title="'+o[1]+'"><i></i><span class="sg" aria-hidden="true">'+o[2]+'</span><span class="rot">'+o[1]+'</span></a>'; });
+  h += '<div class="vs"><b class="l">Lula</b><span>×</span><b class="f">Flávio</b></div>';
   var nav = document.createElement("nav"); nav.className = "lateral"; nav.id = "lateral"; nav.setAttribute("aria-label","Menu principal"); nav.innerHTML = h;
   var topo = document.createElement("div"); topo.className = "barra-topo";
   topo.innerHTML = '<button type="button" id="abrir-menu" aria-label="Abrir menu" aria-expanded="false" aria-controls="lateral"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button><span>Apuração 2026</span>';
@@ -1168,24 +1213,50 @@ body.com-lateral{padding-left:var(--lateral)}
   topo.querySelector("button").addEventListener("click", function(){ menu(!document.body.classList.contains("menu-aberto")); });
   fundo.addEventListener("click", function(){ menu(false); });
   document.addEventListener("keydown", function(e){ if (e.key === "Escape") menu(false); });
+  function turnoEf(){
+    var sel = document.getElementById("turno"), v = sel ? sel.value : "auto";
+    if (v === "1" || v === "2") return v;
+    var i = document.getElementById("turno-info"), m = i && /Acompanhando o (\d)/.exec(i.textContent);
+    return m ? m[1] : "1";
+  }
   function marcar(){
-    var sel = document.querySelector('.abas [aria-selected="true"]'), n = sel ? sel.dataset.aba : null;
-    [].forEach.call(nav.querySelectorAll("a[data-aba]"), function(a){
-      if (noIndex && a.dataset.aba === n) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current");
+    var sel = document.querySelector('.abas [aria-selected="true"]'), n = sel ? sel.dataset.aba : null, te = turnoEf();
+    [].forEach.call(nav.querySelectorAll("a[data-t]"), function(a){
+      var ok = false, so1 = (a.dataset.aba === "5" || a.dataset.aba === "6" || a.dataset.aba === "7");
+      if (noIndex) ok = a.dataset.aba === n && (a.dataset.t === te || (so1 && a.dataset.t === "1"));
+      else if (pag === "mapas.html") ok = a.dataset.aba === "m" && a.dataset.t === te;
+      if (ok) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current");
     });
+    [].forEach.call(nav.querySelectorAll("a[data-pag]"), function(a){ if (a.dataset.pag === pag) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current"); });
+  }
+  function pedirTurno(t){
+    var s = document.getElementById("turno"); if (!s || s.value === t) return;
+    s.value = t; s.dispatchEvent(new Event("change"));
   }
   if (noIndex){
     nav.addEventListener("click", function(ev){
-      var a = ev.target.closest("a[data-aba]"); if (!a) return;
+      var a = ev.target.closest("a[data-t]"); if (!a) return;
       var b = document.querySelector('.abas [data-aba="'+a.dataset.aba+'"]'); if (!b) return;
-      ev.preventDefault(); b.click(); menu(false); window.scrollTo(0,0); marcar(); history.replaceState(null,"","#aba-"+a.dataset.aba);
+      ev.preventDefault(); pedirTurno(a.dataset.t); b.click(); menu(false); window.scrollTo(0,0); marcar();
+      history.replaceState(null,"","?t="+a.dataset.t+"#aba-"+a.dataset.aba);
     });
     var abas = document.querySelector(".abas");
     if (abas) new MutationObserver(marcar).observe(abas, {attributes:true, subtree:true, attributeFilter:["aria-selected"]});
     var m = /^#aba-(\d)$/.exec(location.hash); if (m){ var b0 = document.querySelector('.abas [data-aba="'+m[1]+'"]'); if (b0) b0.click(); }
-    marcar();
   }
+  if (noIndex || pag === "mapas.html"){
+    var ti = document.getElementById("turno-info");
+    if (ti) new MutationObserver(marcar).observe(ti, {childList:true, characterData:true, subtree:true});
+    var ts = document.getElementById("turno"); if (ts) ts.addEventListener("change", marcar);
+    if (tUrl) pedirTurno(tUrl);
+  }
+  marcar();
   nav.addEventListener("click", function(ev){ if (ev.target.closest("a") && !ev.defaultPrevented) menu(false); });
+  // recolher / expandir (guarda a escolha neste navegador)
+  var bt = nav.querySelector("#recolher");
+  function recolher(r){ document.body.classList.toggle("lateral-recolhida", r); bt.setAttribute("aria-expanded", String(!r)); bt.setAttribute("aria-label", r ? "Expandir menu" : "Recolher menu"); bt.title = bt.getAttribute("aria-label"); try{ localStorage.setItem("menu-recolhido", r ? "1" : "0"); }catch(e){} }
+  bt.addEventListener("click", function(){ recolher(!document.body.classList.contains("lateral-recolhida")); });
+  try{ if (localStorage.getItem("menu-recolhido") === "1") recolher(true); }catch(e){}
 })();
 </script><!--/TEMA-->
 </body>

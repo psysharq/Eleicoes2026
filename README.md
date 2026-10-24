@@ -136,3 +136,6 @@ Defina a licença que preferir antes de publicar (por exemplo, MIT) e adicione u
 - Menu lateral esquerdo em todas as páginas (no celular vira um menu que abre pelo botão no topo). Os cargos do painel (Presidente, Governador, Senador, Deputados) ficam no menu; o link `index.html#aba-3` abre direto na aba do governador.
 - Tema escuro fixo, contornos do Brasil e dos estados em verde neon, preenchimento por quem lidera: Lula em vermelho e Flávio em azul.
 - As cores ficam nas variáveis do bloco `<!--TEMA-->` no início e no fim de cada página (`--lula`, `--flavio`, `--neon`).
+
+- O card de atualização automática fica na coluna da direita (telas largas) e o mapa fica centralizado.
+- O menu lateral tem os grupos **1º turno** (Presidente, Governador, Senador, Dep. federal, Dep. estadual, Mapas) e **2º turno** (Presidente, Governador, Mapas); clicar num item escolhe o turno. O botão com a seta recolhe o menu (a escolha fica salva no navegador). Também funciona por link: `index.html?t=2#aba-3`, `mapas.html?t=2`.
