@@ -53,6 +53,20 @@ body{margin:0;background:var(--papel);background-image:radial-gradient(1000px 50
 .mapa svg text{font:700 17px "Barlow Condensed",system-ui,sans-serif;fill:#fff;text-anchor:middle;dominant-baseline:middle;paint-order:stroke;stroke:rgba(0,0,0,.35);stroke-width:2px}
 .contagem{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;font-size:1.1rem}
 .contagem b.l{color:var(--lula)} .contagem b.f{color:#5C8DFF}
+.selo{display:inline-flex;align-items:center;gap:8px;padding:4px 10px;border-radius:999px;font:600 .9rem "Barlow",system-ui,sans-serif;color:var(--neon);border:1px solid rgba(57,255,20,.45);background:rgba(57,255,20,.08)}
+.selo::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--neon);box-shadow:0 0 8px var(--neon);animation:ps 1.6s infinite}
+.selo.atraso{color:var(--alerta);border-color:var(--alerta);background:rgba(255,176,32,.1)} .selo.atraso::before{background:var(--alerta);box-shadow:none;animation:none}
+.selo.espera{color:var(--apagado);border-color:var(--linha);background:transparent} .selo.espera::before{background:var(--apagado);box-shadow:none;animation:none}
+@keyframes ps{50%{opacity:.35}}
+.dica{position:fixed;z-index:60;pointer-events:none;max-width:280px;padding:10px 12px;border-radius:8px;background:#030604;border:1px solid rgba(57,255,20,.6);box-shadow:0 0 18px rgba(57,255,20,.25),0 8px 22px rgba(0,0,0,.6);font-size:1rem;line-height:1.35}
+.dica[hidden]{display:none}
+.dica b{display:block;font:700 1.2rem "Barlow Condensed",system-ui,sans-serif;color:var(--neon)}
+.dica .l{color:var(--lula);font-weight:600} .dica .f{color:#6C97FF;font-weight:600} .dica small{color:var(--apagado)}
+@keyframes brilho{0%,100%{opacity:.5}50%{opacity:1}}
+@keyframes varre{0%{background-position:200% 0}100%{background-position:-200% 0}}
+svg.esq path{fill:#1B2B22!important;animation:brilho 1.3s ease-in-out infinite}
+.esq-txt{color:transparent!important;border-radius:8px;display:inline-block;min-width:3ch;background:linear-gradient(90deg,#16231c 25%,#274232 50%,#16231c 75%);background-size:200% 100%;animation:varre 1.4s linear infinite}
+@media (prefers-reduced-motion:reduce){.selo::before,svg.esq path,.esq-txt{animation:none}}
 .rodape{padding:0 20px 14px;color:var(--apagado);font-size:.85rem}
 body.cheia .topo .some-cheia{display:none}
 </style>
@@ -61,6 +75,7 @@ body.cheia .topo .some-cheia{display:none}
 <header class="topo">
   <h1>Apuração 2026</h1>
   <span class="sub" id="turno">Presidente</span>
+  <span class="selo espera" id="selo" role="status">aguardando leitura…</span>
   <span class="esp"></span>
   <span class="relogio num" id="relogio" aria-label="Hora em Brasília">--:--</span>
   <button type="button" id="cheia">Tela cheia</button>
@@ -71,14 +86,14 @@ body.cheia .topo .some-cheia{display:none}
 <main class="palco">
   <section class="placar" aria-live="polite" aria-label="Placar">
     <div id="alerta" class="alerta" hidden></div>
-    <div class="cand l" id="c-l"><span class="pct num" id="p-l">–</span><span class="nome">Lula</span><span class="votos num" id="v-l"></span></div>
-    <div class="cand f" id="c-f"><span class="pct num" id="p-f">–</span><span class="nome">Flávio Bolsonaro</span><span class="votos num" id="v-f"></span></div>
+    <div class="cand l" id="c-l"><span class="pct num esq-txt" id="p-l">00,00%</span><span class="nome">Lula</span><span class="votos num" id="v-l"></span></div>
+    <div class="cand f" id="c-f"><span class="pct num esq-txt" id="p-f">00,00%</span><span class="nome">Flávio Bolsonaro</span><span class="votos num" id="v-f"></span></div>
     <div class="barra" role="img" aria-label="Proporção de votos" id="barra"><span class="l" style="flex:1"></span><span class="f" style="flex:1"></span></div>
-    <div class="apurado"><b class="num" id="ap">–</b><span>das seções totalizadas</span></div>
+    <div class="apurado"><b class="num esq-txt" id="ap">00,00%</b><span>das seções totalizadas</span></div>
     <div class="proj" id="proj" hidden></div>
   </section>
   <section class="mapa" aria-label="Mapa por estado">
-    <svg id="mapa" viewBox="0 0 1000 968" role="img" aria-label="Mapa do Brasil, estados coloridos por quem lidera"></svg>
+    <svg id="mapa" class="esq" viewBox="0 0 1000 968" role="img" aria-label="Mapa do Brasil, estados coloridos por quem lidera"></svg>
     <div class="contagem num"><span><b class="l" id="n-l">0</b> estados com Lula</span><span><b class="f" id="n-f">0</b> com Flávio</span></div>
   </section>
 </main>
@@ -117,8 +132,36 @@ body.cheia .topo .some-cheia{display:none}
 
   function alerta(msg){ var a = $("alerta"); a.textContent = msg; a.hidden = false; a.style.animation = "none"; void a.offsetWidth; a.style.animation = ""; }
 
+  var NOMES = {AC:"Acre",AL:"Alagoas",AM:"Amazonas",AP:"Amapá",BA:"Bahia",CE:"Ceará",DF:"Distrito Federal",ES:"Espírito Santo",GO:"Goiás",MA:"Maranhão",MG:"Minas Gerais",MS:"Mato Grosso do Sul",MT:"Mato Grosso",PA:"Pará",PB:"Paraíba",PE:"Pernambuco",PI:"Piauí",PR:"Paraná",RJ:"Rio de Janeiro",RN:"Rio Grande do Norte",RO:"Rondônia",RR:"Roraima",RS:"Rio Grande do Sul",SC:"Santa Catarina",SE:"Sergipe",SP:"São Paulo",TO:"Tocantins"};
+  // selo ao vivo
+  var seloEl = $("selo");
+  function pintarSelo(){
+    if (!ultima){ seloEl.className = "selo espera"; seloEl.textContent = "aguardando leitura…"; return; }
+    var s = Math.max(0, Math.round((Date.now() - ultima) / 1000));
+    if (s >= 180){ seloEl.className = "selo atraso"; seloEl.textContent = "sem atualização há " + Math.round(s / 60) + " min"; return; }
+    seloEl.className = "selo"; seloEl.textContent = "ao vivo · " + (s < 5 ? "agora" : s < 90 ? "há " + s + " s" : "há " + Math.round(s / 60) + " min");
+  }
+  setInterval(pintarSelo, 1000);
+  // balão do mapa
+  var dica = document.createElement("div"); dica.className = "dica"; dica.hidden = true; document.body.appendChild(dica); var dicaT = null;
+  function dicaHtml(u){
+    var r = ESTADOS[u], h = "<b>" + NOMES[u] + "</b>";
+    if (!r || !(r.tot > 0)) return h + "sem dados ainda";
+    return h + '<span class="l">Lula ' + f1(r.L / r.tot * 100) + "% · " + n0(r.L) + ' votos</span><br><span class="f">Flávio ' + f1(r.F / r.tot * 100) + "% · " + n0(r.F) + " votos</span><br><small>" + f1(r.pst) + "% das seções apuradas</small>";
+  }
+  function dicaMostrar(ev, p){
+    dica.innerHTML = dicaHtml(p.id.slice(2)); dica.hidden = false;
+    var w = dica.offsetWidth, hh = dica.offsetHeight, x = ev.clientX + 14, y = ev.clientY + 14;
+    if (x + w > innerWidth - 8) x = Math.max(8, ev.clientX - w - 14); if (y + hh > innerHeight - 8) y = Math.max(8, ev.clientY - hh - 14);
+    dica.style.left = x + "px"; dica.style.top = y + "px";
+  }
+  $("mapa").addEventListener("pointermove", function(ev){ if (ev.pointerType === "touch") return; var p = ev.target.closest("path"); if (p) dicaMostrar(ev, p); else dica.hidden = true; });
+  $("mapa").addEventListener("pointerleave", function(){ dica.hidden = true; });
+  $("mapa").addEventListener("pointerdown", function(ev){ if (ev.pointerType !== "touch") return; var p = ev.target.closest("path"); if (!p) return; dicaMostrar(ev, p); clearTimeout(dicaT); dicaT = setTimeout(function(){ dica.hidden = true; }, 3500); });
+  function tiraEsqueleto(){ ["p-l", "p-f", "ap"].forEach(function(i){ $(i).classList.remove("esq-txt"); }); }
   function pintarPlacar(){
-    var r = BR; if (!r || !(r.tot > 0)) { $("p-l").textContent = $("p-f").textContent = "–"; $("ap").textContent = "–"; return; }
+    var r = BR; if (!r || !(r.tot > 0)) { return; }
+    tiraEsqueleto();
     var pl = r.L / r.tot * 100, pf = r.F / r.tot * 100;
     $("p-l").textContent = f1(pl) + "%"; $("p-f").textContent = f1(pf) + "%";
     $("v-l").textContent = n0(r.L) + " votos"; $("v-f").textContent = n0(r.F) + " votos";
@@ -129,7 +172,7 @@ body.cheia .topo .some-cheia{display:none}
     if (r.L !== r.F){ if (liderAnt && liderAnt !== lid) alerta("Virada: " + lid + " passou à frente."); liderAnt = lid; }
   }
   function pintarMapa(){
-    var nl = 0, nf = 0;
+    var nl = 0, nf = 0; if (Object.keys(ESTADOS).length) $("mapa").classList.remove("esq");
     UFS.forEach(function(u){
       var r = ESTADOS[u], p = $("e-" + u), cor = COR.v;
       if (r && r.tot > 0){ if (r.L > r.F){ cor = COR.l; nl++; } else if (r.F > r.L){ cor = COR.f; nf++; } else cor = COR.o; }
@@ -150,7 +193,7 @@ body.cheia .topo .some-cheia{display:none}
   function hora(){ $("relogio").textContent = new Date().toLocaleTimeString("pt-BR", { hour:"2-digit", minute:"2-digit", timeZone:"America/Sao_Paulo" }); }
   hora(); setInterval(hora, 15000);
 
-  function lerBr(){ return pedir("br").then(function(d){ if (d){ BR = resumo(d); ultima = Date.now(); } pintarPlacar(); }).catch(function(){}); }
+  function lerBr(){ return pedir("br").then(function(d){ if (d){ BR = resumo(d); ultima = Date.now(); pintarSelo(); } pintarPlacar(); }).catch(function(){}); }
   var lendoUf = false;
   function lerUfs(){
     if (lendoUf) return Promise.resolve(); lendoUf = true;
@@ -158,6 +201,7 @@ body.cheia .topo .some-cheia{display:none}
       return p.then(function(){ return pedir(u.toLowerCase()).then(function(d){ if (d){ ESTADOS[u] = resumo(d); } }).catch(function(){}).then(function(){ return new Promise(function(ok){ setTimeout(ok, 120); }); }); });
     }, Promise.resolve()).then(function(){ lendoUf = false; pintarMapa(); pintarProj(); $("rodape").textContent = "Dados oficiais do TSE, última leitura às " + new Date().toLocaleTimeString("pt-BR", { hour:"2-digit", minute:"2-digit", timeZone:"America/Sao_Paulo" }) + ". Projeção é estimativa, não resultado oficial."; });
   }
+  setTimeout(function(){ tiraEsqueleto(); $("mapa").classList.remove("esq"); }, 30000);
   lerBr().then(lerUfs);
   setInterval(function(){ if (!document.hidden) lerBr(); }, 30000);
   setInterval(function(){ if (!document.hidden) lerUfs(); }, 90000);

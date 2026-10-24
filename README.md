@@ -157,3 +157,9 @@ Defina a licença que preferir antes de publicar (por exemplo, MIT) e adicione u
 - `telao.html`: placar grande, mapa por estado, projeção, botão de tela cheia e "Salvar imagem" (PNG para compartilhar). Aceita `?t=1` ou `?t=2` para fixar o turno.
 - Painel (aba Presidente, 2º turno): cartão "Projeção do 2º turno" (estimativa; "definido" só com os 27 estados com votos e vantagem acima de 1,25 vez os votos que faltam) e avisos de virada e de vitória definida (sino).
 - `comparar.html`: tabela de variação por estado, 1º → 2º turno.
+
+## Selo ao vivo, balão no mapa e carregamento
+
+- Selo "ao vivo · há N s" ao lado do título do mapa (painel, mapas e telão); vira aviso âmbar "sem atualização há N min" depois de 3 minutos sem leitura.
+- Passar o mouse (ou tocar) num estado abre um balão com Lula %, Flávio %, votos e % apurado.
+- Enquanto o primeiro resultado não chega, o mapa e os números piscam em cinza (esqueleto); sem animação para quem pediu movimento reduzido.

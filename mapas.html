@@ -262,6 +262,30 @@ body.com-lateral{padding-left:var(--lateral)}
 .lateral .vs .mini-barra i:first-child{background:var(--lula)} .lateral .vs .mini-barra i:last-child{background:var(--flavio)}
 .lateral .vs small{width:100%}
 .lateral .vs{flex-direction:row}
+
+/* selo ao vivo */
+.selo{display:inline-flex;align-items:center;gap:8px;margin:2px 0 0;padding:4px 10px;border-radius:999px;font:600 .85rem "Barlow",system-ui,sans-serif;
+  color:var(--neon);border:1px solid rgba(57,255,20,.45);background:rgba(57,255,20,.08);width:fit-content}
+.selo::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--neon);box-shadow:0 0 8px var(--neon);animation:pulso-selo 1.6s infinite}
+.selo.atraso{color:var(--alerta);border-color:var(--alerta);background:rgba(255,176,32,.1)}
+.selo.atraso::before{background:var(--alerta);box-shadow:none;animation:none}
+.selo.espera{color:var(--apagado);border-color:var(--linha);background:transparent}
+.selo.espera::before{background:var(--apagado);box-shadow:none;animation:none}
+@keyframes pulso-selo{50%{opacity:.35}}
+/* balão do mapa */
+.dica{position:fixed;z-index:60;pointer-events:none;max-width:260px;padding:10px 12px;border-radius:8px;background:#030604;
+  border:1px solid rgba(57,255,20,.6);box-shadow:0 0 18px rgba(57,255,20,.25),0 8px 22px rgba(0,0,0,.6);font-size:.92rem;line-height:1.35}
+.dica[hidden]{display:none}
+.dica b{display:block;font:700 1.1rem "Barlow Condensed",system-ui,sans-serif;color:var(--neon);margin-bottom:2px}
+.dica .d-lula{color:var(--lula);font-weight:600} .dica .d-flavio{color:#6C97FF;font-weight:600} .dica .d-outro{color:var(--tinta)}
+.dica small{color:var(--apagado)}
+/* esqueleto */
+@keyframes brilho{0%,100%{opacity:.5}50%{opacity:1}}
+@keyframes varre{0%{background-position:200% 0}100%{background-position:-200% 0}}
+svg.esq path{fill:#1B2B22!important;animation:brilho 1.3s ease-in-out infinite}
+.esq-txt{color:transparent!important;text-shadow:none!important;border-radius:6px;display:inline-block;min-width:2.2ch;
+  background:linear-gradient(90deg,#16231c 25%,#274232 50%,#16231c 75%);background-size:200% 100%;animation:varre 1.4s linear infinite}
+@media (prefers-reduced-motion:reduce){.selo::before,svg.esq path,.esq-txt{animation:none}}
 </style><!--/TEMA-->
 </head>
 <body>
@@ -765,6 +789,16 @@ body.com-lateral{padding-left:var(--lateral)}
       if ((ev.key === "Enter" || ev.key === " ") && ev.target.tagName === "path"){ ev.preventDefault(); selecionarUf(ev.target.id.slice(3), false); }
     });
   }
+  window.__temDados = function(){ return UFS.some(function(u){ return estados[u]; }); };
+  window.__dica = function(p){
+    var u = (p.id || "").slice(3), x = estados[u]; if (!NOMES[u]) return "";
+    var h = "<b>" + esc(NOMES[u]) + "</b>";
+    if (cargoSel === "3") return h + "<small>Toque para ver os governadores e as cidades</small>";
+    if (!x || !(x.tot > 0)) return h + "<span>sem dados ainda</span>";
+    return h + '<span class="d-lula">Lula ' + pct1(x.L / x.tot * 100) + "% · " + Math.round(x.L).toLocaleString("pt-BR") + " votos</span><br>" +
+      '<span class="d-flavio">Flávio ' + pct1(x.F / x.tot * 100) + "% · " + Math.round(x.F).toLocaleString("pt-BR") + " votos</span>" +
+      (x.pst !== undefined && x.pst !== null ? "<br><small>" + pct1(x.pst) + "% das seções apuradas</small>" : "");
+  };
   function pintarEstado(u){
     var x = estados[u], el = $("es-" + u), t = $("et-" + u); if (!el) return;
     var modo = elMet.value;
@@ -1181,7 +1215,7 @@ body.com-lateral{padding-left:var(--lateral)}
         $("aviso").textContent = "O TSE não respondeu para alguns estados. Os mapas mostram a última leitura boa de cada um. Nova tentativa em " + fmtEspera(espera) + ".";
         $("ultima").textContent = ultimaOk ? "Última leitura completa às " + ultimaOk + "." : "Ainda sem leitura completa.";
       } else {
-        falhas = 0; ultimaOk = new Date().toLocaleTimeString("pt-BR");
+        falhas = 0; ultimaOk = new Date().toLocaleTimeString("pt-BR"); if (window.Selo) Selo.marcar(Date.now());
         $("aviso").textContent = publicado ? "" : "O TSE ainda não publicou os resultados de presidente. A divulgação começa após o fim da votação, às 17h (Brasília). Nova tentativa em 2 minutos.";
         $("ultima").textContent = "Última leitura dos estados às " + ultimaOk + ".";
       }
@@ -1332,6 +1366,61 @@ body.com-lateral{padding-left:var(--lateral)}
     }
     function turnoTxt(){ return ele === 6258 ? "2º turno" : "1º turno"; }
     ler(); setInterval(ler, 60000);
+  })();
+  // ---- selo "ao vivo": há quanto tempo o painel leu o TSE pela última vez ----
+  var seloT = null, selos = [];
+  window.Selo = { marcar: function(t){ seloT = t || Date.now(); selos.forEach(pintarSelo); } };
+  function pintarSelo(el){
+    if (seloT === null){ el.className = "selo espera"; el.textContent = "aguardando leitura…"; return; }
+    var s = Math.max(0, Math.round((Date.now() - seloT) / 1000));
+    if (s >= 180){ el.className = "selo atraso"; el.textContent = "sem atualização há " + Math.round(s / 60) + " min"; return; }
+    el.className = "selo";
+    el.textContent = "ao vivo · " + (s < 5 ? "agora" : s < 90 ? "há " + s + " s" : "há " + Math.round(s / 60) + " min");
+  }
+  ["mapa-titulo", "reg-titulo"].forEach(function(id){
+    var h = document.getElementById(id); if (!h) return;
+    var el = document.createElement("span"); el.className = "selo espera"; el.setAttribute("role", "status"); h.insertAdjacentElement("afterend", el); selos.push(el); pintarSelo(el);
+  });
+  if (selos.length) setInterval(function(){ selos.forEach(pintarSelo); }, 1000);
+
+  // ---- balão ao passar o mouse ou tocar num estado ----
+  var dica = document.createElement("div"); dica.className = "dica"; dica.hidden = true; dica.setAttribute("role", "tooltip"); document.body.appendChild(dica);
+  var dicaT = null;
+  function dicaMostrar(ev, p){
+    if (typeof window.__dica !== "function") return;
+    var h = ""; try { h = window.__dica(p); } catch(e){}
+    var ti = p.querySelector("title"); if (ti) ti.textContent = "";                 // evita o balão nativo por cima do nosso
+    if (!h){ dica.hidden = true; return; }
+    dica.innerHTML = h; dica.hidden = false;
+    var w = dica.offsetWidth, hh = dica.offsetHeight, x = ev.clientX + 14, y = ev.clientY + 14;
+    if (x + w > innerWidth - 8) x = Math.max(8, ev.clientX - w - 14);
+    if (y + hh > innerHeight - 8) y = Math.max(8, ev.clientY - hh - 14);
+    dica.style.left = x + "px"; dica.style.top = y + "px";
+  }
+  ["mapa", "mapa-reg", "mapa-est"].forEach(function(id){
+    var svg = document.getElementById(id); if (!svg) return;
+    svg.addEventListener("pointermove", function(ev){ if (ev.pointerType === "touch") return; var p = ev.target.closest && ev.target.closest("path"); if (p) dicaMostrar(ev, p); else dica.hidden = true; });
+    svg.addEventListener("pointerleave", function(){ dica.hidden = true; });
+    svg.addEventListener("pointerdown", function(ev){
+      if (ev.pointerType !== "touch") return;
+      var p = ev.target.closest && ev.target.closest("path"); if (!p) return;
+      dicaMostrar(ev, p); clearTimeout(dicaT); dicaT = setTimeout(function(){ dica.hidden = true; }, 3500);
+    });
+    svg.addEventListener("focusin", function(ev){ var p = ev.target.closest && ev.target.closest("path"); if (p){ var r = p.getBoundingClientRect(); dicaMostrar({ clientX:r.left + r.width / 2, clientY:r.top + r.height / 2 }, p); } });
+    svg.addEventListener("focusout", function(){ dica.hidden = true; });
+  });
+  document.addEventListener("scroll", function(){ dica.hidden = true; }, { passive:true });
+
+  // ---- esqueleto de carregamento: mapas e números piscam até chegar o primeiro resultado ----
+  (function(){
+    var mapas = ["mapa", "mapa-reg", "mapa-est"].map(function(i){ return document.getElementById(i); }).filter(Boolean);
+    var nums = ["n-lula", "n-flavio"].map(function(i){ return document.getElementById(i); }).filter(Boolean);
+    if (!mapas.length) return;
+    mapas.forEach(function(m){ m.classList.add("esq"); }); nums.forEach(function(n){ n.classList.add("esq-txt"); });
+    var t0 = Date.now(), iv = setInterval(function(){
+      var ok = false; try { ok = typeof window.__temDados === "function" && window.__temDados(); } catch(e){}
+      if (ok || Date.now() - t0 > 30000){ mapas.forEach(function(m){ m.classList.remove("esq"); }); nums.forEach(function(n){ n.classList.remove("esq-txt"); }); clearInterval(iv); }
+    }, 400);
   })();
   // recolher / expandir (guarda a escolha neste navegador)
   var bt = nav.querySelector("#recolher");
