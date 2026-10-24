@@ -36,6 +36,19 @@ As cidades são lidas aos poucos (4 por vez, cerca de 12 por segundo, bem abaixo
 
 O botão **Publicar** do Claude cria uma página que **não consegue ler o TSE** (pedidos a outros sites são bloqueados). Nesse modo os contornos aparecem, mas sem votos: os mapas ficam cinza, e só o modo "Demonstração" (números inventados) mostra cores. Use sempre o endereço do GitHub Pages, do Netlify ou de um servidor seu.
 
+## Terceira página: ficha da seção (log da urna)
+
+O arquivo `secao.html` lê, **no próprio aparelho**, os arquivos públicos de uma seção eleitoral que o TSE publica depois da totalização, em “Dados de urna” do portal Resultados:
+
+- **Log da urna** (`LogDeUrna_….zip`): a página abre o `.zip` (e o `.jez` que vem dentro) sozinha. Mostra os votos computados, a abertura e o encerramento, o ritmo de votos ao longo do dia (por hora, 30 ou 15 minutos, com tabela alternativa), o tempo de cada eleitor na urna, como os eleitores foram habilitados (biometria ou mesário), a linha do tempo do dia da urna e contagens de ocorrências.
+- **Boletim de urna** (`BoletimDeUrna_….dat`), opcional: mostra o resultado da seção para presidente, governador e senador e **confere o log contra o boletim** (número da urna, comparecimento, horários de abertura e encerramento e votos por cargo). Os nomes de governador e senador são buscados no TSE; sem acesso, aparecem os números dos candidatos.
+- **RDV**: não é necessário. Ele não registra o horário dos votos (a ordem é embaralhada). Se um RDV for anexado, a página avisa; se o arquivo tiver chegado danificado (bytes binários trocados por `EF BF BD`, o que acontece quando um arquivo binário é salvo como texto), ela também avisa.
+- **“Há um horário melhor para votar?”**: o log não registra fila, mas registra quanto tempo a urna ficou esperando o próximo eleitor depois de cada voto. A página calcula, por faixa de 30 minutos, a parte do tempo em que a urna ficou parada além do tempo normal de passagem do mesário. Se alguma faixa passa de 15%, ela é apontada como horário com folga; se nenhuma passa, a página diz que o log não indica horário melhor. Folga zero não mede o tamanho da fila, e o resultado vale para aquela seção naquele dia: não é previsão. Uma ideia de uso: carregar o log do 1º turno da sua própria seção antes do 2º turno.
+- No 2º turno o log traz também os eventos do 1º turno: aparece um seletor de dia, e o dia do boletim é escolhido automaticamente.
+- A página só mostra agregados. Títulos de eleitor, CPFs e a identificação de mesários que existem no log não são exibidos.
+- A página não classifica seções como regulares ou irregulares. Ela mostra horários e contagens; a conferência entre os dois arquivos é só uma comparação, e não substitui a auditoria oficial.
+- Deputados federal e estadual (votos proporcionais) ainda não são lidos do boletim.
+
 ## Como usar
 
 1. Abra o endereço onde a página foi publicada (ou abra o `index.html` no navegador).
@@ -81,6 +94,7 @@ Os arquivos públicos de divulgação do TSE, lidos diretamente pelo navegador d
 ## Privacidade
 
 - Não há servidor próprio, conta nem rastreamento. A página se comunica apenas com o TSE (resultados, fotos e portal de candidaturas) e com o Google Fonts, de onde vêm as fontes tipográficas (Barlow).
+- Na ficha da seção, os arquivos anexados são lidos no navegador e **não são enviados a lugar nenhum**; só os nomes de governador e senador são buscados no TSE.
 - Favoritos, preferências de avisos e a última leitura boa ficam salvos **apenas no navegador** de cada pessoa (armazenamento local).
 
 ## Limitações conhecidas
@@ -93,13 +107,15 @@ Os arquivos públicos de divulgação do TSE, lidos diretamente pelo navegador d
 - Notificações do sistema só funcionam com a página aberta; não há notificação com a página fechada.
 - Se o navegador bloquear a leitura dos arquivos do TSE (CORS), será preciso servir os dados por um proxy próprio.
 - O mapa usa contornos simplificados dos estados e das cidades (fonte: IBGE). Sete municípios criados recentemente (Mojuí dos Campos, Nazária, Balneário Rincão, Pescaria Brava, Pinto Bandeira, Paraíso das Águas e Boa Esperança do Norte) e a ilha de Fernando de Noronha não aparecem desenhados, mas os votos deles entram nas contagens.
+- A ficha da seção foi testada com o log, o boletim e o RDV reais de uma seção do 1º turno (Caruaru, zona 0106, seção 0034). O formato do boletim foi decifrado a partir desses arquivos; se o TSE mudar a versão do software da urna, a leitura do boletim pode precisar de ajuste.
 - O resultado de cada cidade ainda não foi testado com arquivos reais do TSE (só com dados simulados). Se o mapa de cidades ficar vazio mesmo com a apuração em andamento, rode o coletor (opção "Cidade de teste: Recife") e verifique a resposta.
 
 ## Estrutura do repositório
 
 ```
 index.html          # o painel
-mapas.html          # mapas por região e por cidade (Presidente), com os contornos embutidos
+mapas.html          # mapas por região e por cidade (Presidente e Governador), com os contornos embutidos
+secao.html          # ficha da seção: log da urna e boletim de urna
 coletor-tse.html    # coletor de arquivos para diagnóstico
 README.md           # este arquivo
 ```
@@ -107,3 +123,10 @@ README.md           # este arquivo
 ## Licença
 
 Defina a licença que preferir antes de publicar (por exemplo, MIT) e adicione um arquivo `LICENSE`. Os dados e as fotos pertencem ao TSE e seguem as regras de uso do órgão.
+
+## Segundo turno (25/10/2026)
+
+- Os códigos padrão do 2º turno são **6258** (federal) e **6260** (estadual); o painel e os mapas trocam sozinhos para o 2º turno a partir de `dt2` (o `ele-c.json` do TSE, ou 25/10/2026 se o arquivo não trouxer a data). Há também um seletor manual de turno.
+- Presidente e governador seguem o turno escolhido; senador e deputados ficam sempre no 1º turno.
+- Estados em que o governador foi eleito no 1º turno mostram a mensagem "sem 2º turno" em vez de erro.
+- O `coletor-tse.html` agora também baixa os arquivos do 2º turno (presidente, acompanhamento, cidades e governador), para conferir o formato real.

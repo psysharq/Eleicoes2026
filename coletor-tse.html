@@ -115,8 +115,8 @@ ol.res li:last-child{border-bottom:0}
 <script>
 (function(){
   var AMB = {
-    oficial:  { base:"https://resultados.tse.jus.br/oficial", federal:6257, estadual:6259, raiz:"https://resultados.tse.jus.br/oficial" },
-    simulado: { base:"https://resultados-sim.tse.jus.br/simulado/simulado2026", federal:21270, estadual:21272, raiz:"https://resultados-sim.tse.jus.br/simulado/simulado2026" }
+    oficial:  { base:"https://resultados.tse.jus.br/oficial", federal:6257, estadual:6259, federal2:6258, estadual2:6260, raiz:"https://resultados.tse.jus.br/oficial" },
+    simulado: { base:"https://resultados-sim.tse.jus.br/simulado/simulado2026", federal:21270, estadual:21272, federal2:null, estadual2:null, raiz:"https://resultados-sim.tse.jus.br/simulado/simulado2026" }
   };
   var NOMES = {AC:"Acre",AL:"Alagoas",AM:"Amazonas",AP:"Amapá",BA:"Bahia",CE:"Ceará",DF:"Distrito Federal",ES:"Espírito Santo",GO:"Goiás",MA:"Maranhão",MG:"Minas Gerais",MS:"Mato Grosso do Sul",MT:"Mato Grosso",PA:"Pará",PB:"Paraíba",PE:"Pernambuco",PI:"Piauí",PR:"Paraná",RJ:"Rio de Janeiro",RN:"Rio Grande do Norte",RO:"Rondônia",RR:"Roraima",RS:"Rio Grande do Sul",SC:"Santa Catarina",SE:"Sergipe",SP:"São Paulo",TO:"Tocantins"};
   var UFS = Object.keys(NOMES).sort();
@@ -133,7 +133,7 @@ ol.res li:last-child{border-bottom:0}
   function opcoes(){
     var a = AMB[elAmb.value], uf = elUf.value, U = uf.toUpperCase();
     var dep = uf === "df" ? 8 : 7;
-    return [
+    var lista = [
       { id:"config",  nome:"Configuração das eleições", url: a.raiz + "/comum/config/ele-c.json", marcado:true },
       { id:"pres",    nome:"Presidente, Brasil", url: arq(a.federal, "br", 1), marcado:true },
       { id:"presZZ", nome:"Presidente, Exterior (brasileiros no exterior)", url: arq(a.federal, "zz", 1), marcado:true },
@@ -145,9 +145,17 @@ ol.res li:last-child{border-bottom:0}
       { id:"sen",     nome:"Senador, " + NOMES[U], url: arq(a.estadual, uf, 5), marcado:true },
       { id:"depf",    nome:"Deputado federal, " + NOMES[U], url: arq(a.estadual, uf, 6), marcado:true },
       { id:"depe",    nome:(uf === "df" ? "Deputado distrital, " : "Deputado estadual, ") + NOMES[U], url: arq(a.estadual, uf, dep), marcado:true },
+      { id:"pres2",   nome:"2º turno: Presidente, Brasil", url: arq(a.federal2, "br", 1), marcado:true, t2:true },
+      { id:"pres2ZZ", nome:"2º turno: Presidente, Exterior", url: arq(a.federal2, "zz", 1), marcado:true, t2:true },
+      { id:"acomp2",  nome:"2º turno: Acompanhamento da totalização, Brasil", url: a.base + "/ele2026/" + a.federal2 + "/dados/br/br-e" + pad(a.federal2,6) + "-ab.json", marcado:true, t2:true },
+      { id:"abuf2",   nome:"2º turno: Acompanhamento das cidades de " + NOMES[U], url: a.base + "/ele2026/" + a.federal2 + "/dados/" + uf + "/" + uf + "-e" + pad(a.federal2,6) + "-ab.json", marcado:true, t2:true },
+      { id:"cidade2", nome:"2º turno: Cidade de teste, Recife (presidente)", url: a.base + "/ele2026/" + a.federal2 + "/dados/pe/pe25313-c0001-e" + pad(a.federal2,6) + "-u.json", marcado:true, t2:true },
+      { id:"gov2",    nome:"2º turno: Governador, " + NOMES[U] + " (só existe onde houve 2º turno)", url: arq(a.estadual2, uf, 3), marcado:true, t2:true },
+      { id:"pres27_2", nome:"2º turno: Presidente nos 27 estados (27 arquivos)", url:"vários", marcado:false, t2:true, varios: UFS.map(function(u){ return arq(a.federal2, u.toLowerCase(), 1); }) },
       { id:"pres27",  nome:"Presidente nos 27 estados (27 arquivos)", url:"vários", marcado:false, varios: UFS.map(function(u){ return arq(a.federal, u.toLowerCase(), 1); }) },
       { id:"mun",     nome:"Lista de municípios (arquivo grande)", url: a.base + "/ele2026/" + a.federal + "/config/mun-e" + pad(a.federal,6) + "-cm.json", marcado:false }
     ];
+    return a.federal2 ? lista : lista.filter(function(o){ return !o.t2; });
   }
   function desenharOpcoes(){
     var marcados = {};
@@ -182,7 +190,7 @@ ol.res li:last-child{border-bottom:0}
     [].forEach.call(document.querySelectorAll("#opcoes input:checked"), function(i){
       if (i.value.indexOf("extra-") === 0){ lista.push({ nome:"Endereço adicionado", url: extras[+i.value.slice(6)] }); return; }
       var o = ops.filter(function(x){ return x.id === i.value; })[0];
-      if (o.varios) o.varios.forEach(function(u){ lista.push({ nome:"Presidente, " + u.split("/dados/")[1].slice(0,2).toUpperCase(), url:u }); });
+      if (o.varios) o.varios.forEach(function(u){ lista.push({ nome:(/\/ele2026\/6258\//.test(u) ? "2º turno: " : "") + "Presidente, " + u.split("/dados/")[1].slice(0,2).toUpperCase(), url:u }); });
       else lista.push({ nome:o.nome, url:o.url });
     });
     return lista;
